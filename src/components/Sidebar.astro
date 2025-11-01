@@ -1,0 +1,61 @@
+---
+import { fetchTags, fetchRecentComments, fetchSettings } from "../lib/wp";
+const tags = await fetchTags(20);
+const comments = await fetchRecentComments(5);
+const settings = await fetchSettings();
+
+function toRelativePostLink(absUrl: string | undefined | null): string {
+  if (!absUrl) return '#';
+  // Already relative
+  if (/^\//.test(absUrl)) return absUrl;
+  try {
+    const u = new URL(absUrl);
+    const path = u.pathname.replace(/\/$/, '');
+    const parts = path.split('/').filter(Boolean);
+    const slug = parts[parts.length - 1] || '';
+    return slug ? `/${slug}/#comments` : '#';
+  } catch {
+    return '#';
+  }
+}
+---
+<section class="cat_block">
+  <div class="little_card_title">Search</div>
+  <form class="search" method="get" action="/search" role="search">
+    <input type="text" id="s" name="s" class="text" placeholder="输入关键字回车" />
+  </form>
+</section>
+
+<section class="cat_block">
+  <div class="little_card_title">Tags</div>
+  <div class="cat_categorymenu">
+    {tags.map((t) => (
+      <a href={`/tag/${t.slug}/`}>{t.name}<span style="font-size: x-small; color: var(--B);">{t.count}</span></a>
+    ))}
+  </div>
+</section>
+
+<section class="recent_comments">
+  {comments.length ? comments.map((c) => (
+    <div class="cat_block cat_recentcomment_list">
+      <div class="left">
+        <img class="avatar lazyload" src="/style/lazy.png" data-src={c.author_avatar_urls?.['48'] || c.author_avatar_urls?.['96'] || '/style/avatar.png'} alt={c.author_name} />
+      </div>
+      <div class="right" cat_title={`来自 ${c.author_name}`}>
+        <div class="user">
+          <div class="name">{c.author_name}</div>
+          <time class="smalltext" cat_title={new Date(c.date).toLocaleString('zh-CN')}>{new Date(c.date).toLocaleDateString('zh-CN')}</time>
+        </div>
+        <div class="reply">
+          <a href={toRelativePostLink((c as any)?._embedded?.up?.[0]?.link || c.link)} set:html={c.content.rendered}></a>
+        </div>
+      </div>
+    </div>
+  )) : (
+    <div class="cat_block">😎小站还没有评论呢</div>
+  )}
+  <div class="cat_block aside_info_card">
+    <div class="little_card_title">Info</div>
+    <p set:html={settings.site_footer_text || 'Powered by Sunny Lite!'}></p>
+  </div>
+</section>

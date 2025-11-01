@@ -1,0 +1,114 @@
+---
+import { fetchSiteInfo, fetchUserById, fetchCategories, fetchPages, fetchSettings } from "../lib/wp";
+const info = await fetchSiteInfo();
+const user = await fetchUserById(1);
+const cats = await fetchCategories();
+const settings = await fetchSettings();
+let pages = await fetchPages();
+// 前端过滤：隐藏草稿与子页面
+pages = pages.filter(p => (p.status || 'publish') === 'publish' && (p.parent || 0) === 0);
+// 读取过滤条件（逗号分隔）
+const excludeSlugs = (import.meta.env.PUBLIC_PAGES_EXCLUDE_SLUGS || '').split(',').map(s => s.trim()).filter(Boolean);
+const excludeTitles = (import.meta.env.PUBLIC_PAGES_EXCLUDE_TITLES || '').split(',').map(s => s.trim()).filter(Boolean);
+const includeSlugs = (import.meta.env.PUBLIC_PAGES_INCLUDE_SLUGS || '').split(',').map(s => s.trim()).filter(Boolean);
+// 应用 include (若设定则仅保留这些 slug)
+if (includeSlugs.length) {
+  pages = pages.filter(p => includeSlugs.includes(p.slug));
+}
+// 应用 exclude（按 slug 或标题关键字）
+if (excludeSlugs.length || excludeTitles.length) {
+  pages = pages.filter(p => !excludeSlugs.includes(p.slug) && !excludeTitles.some(k => (p.title?.rendered || '').includes(k)));
+}
+const siteTitle = info.name || 'Sunny';
+const siteDesc = info.description || '';
+function withAvatarMirror(url: string | undefined): string {
+  const mirror = import.meta.env.PUBLIC_AVATAR_MIRROR || '';
+  if (!url) return 'https://cn.cravatar.com/avatar/';
+  if (!mirror) return url;
+  try {
+    const u = new URL(url);
+    u.hostname = mirror.replace(/^https?:\/\//,'').replace(/\/$/,'');
+    return u.toString();
+  } catch {
+    return url || 'https://cn.cravatar.com/avatar/';
+  }
+}
+const siteAvatar = withAvatarMirror(user.avatar_urls?.['96'] || user.avatar_urls?.['48']);
+const parents = cats.filter(c => c.parent === 0);
+const childrenByParent = new Map<number, typeof cats>();
+cats.forEach(c => {
+  if (c.parent && c.parent !== 0) {
+    const list = childrenByParent.get(c.parent) || [];
+    list.push(c);
+    childrenByParent.set(c.parent, list);
+  }
+});
+---
+<section class="cat_top">
+  <div class="logo">
+    <a href="/">
+      <img class="avatar lazyload" src="/style/lazy.png" data-src={siteAvatar} alt={user.name || '博主'} />
+    </a>
+  </div>
+  <div class="words">
+    <a class="webtitle" href="/">{siteTitle}</a>
+    <span class="description">{siteDesc}</span>
+  </div>
+</section>
+<section id="read_article" class="cat_menu cat_block">
+  <ul class="left">
+    <li class="item">
+      <div class="title"><a href="/" class="word">首页</a></div>
+    </li>
+    {parents.length > 0 && (
+      <li class="item arrow">
+        <div class="title">分类</div>
+        <nav class="mainmenu_nav_child">
+          {parents.map((c) => (
+            <Fragment>
+              <a href={`/category/${c.slug}/`}>📂{c.name}</a>
+              {childrenByParent.get(c.id)?.length ? (
+                <nav class="category_nav_child">
+                  {childrenByParent.get(c.id)!.map((child) => (
+                    <a href={`/category/${child.slug}/`} target="_blank">{child.name}</a>
+                  ))}
+                </nav>
+              ) : null}
+            </Fragment>
+          ))}
+        </nav>
+      </li>
+    )}
+    <li class="item">
+      <div class="title"><a href="/links" class="word">好友</a></div>
+    </li>
+    <li class="item">
+      <div class="title"><a href="/archives" class="word">归档</a></div>
+    </li>
+    {pages.length > 0 && pages.map(p => (
+      <li class="item">
+        <div class="title">
+          <a href={`/${p.slug}/`} class="word" style="cursor:pointer;" set:html={p.title.rendered}></a>
+        </div>
+      </li>
+    ))}
+    <li class="item">
+      <span class="bottom_infos" set:html={settings.site_footer_text || 'Powered by Sunny Lite!'}></span>
+    </li>
+  </ul>
+  <div class="right">
+    <span class="anniu percentage" cat_title="回到顶部"><div class="num"></div></span>
+    <span class="anniu mobile_menu" cat_title="菜单">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 4H21V6H3V4ZM3 11H21V13H3V11ZM3 18H21V20H3V18Z"></path></svg>
+    </span>
+    <span class="darkmode_percent">
+      <span class="anniu tolight_anniu" cat_title="白天" style="display:none;">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18C8.68629 18 6 15.3137 6 12C6 8.68629 8.68629 6 12 6C15.3137 6 18 8.68629 18 12C18 15.3137 15.3137 18 12 18ZM12 16C14.2091 16 16 14.2091 16 12C16 9.79086 14.2091 8 12 8C9.79086 8 8 9.79086 8 12C8 14.2091 9.79086 16 12 16ZM11 1H13V4H11V1ZM11 20H13V23H11V20ZM3.51472 4.92893L4.92893 3.51472L7.05025 5.63604L5.63604 7.05025L3.51472 4.92893ZM16.9497 18.364L18.364 16.9497L20.4853 19.0711L19.0711 20.4853L16.9497 18.364ZM19.0711 3.51472L20.4853 4.92893L18.364 7.05025L16.9497 5.63604L19.0711 3.51472ZM5.63604 16.9497L7.05025 18.364L4.92893 20.4853L3.51472 19.0711L5.63604 16.9497ZM23 11V13H20V11H23ZM4 11V13H1V11H4Z"></path></svg>
+      </span>
+      <span class="anniu todark_anniu" cat_title="夜晚">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M10 7C10 10.866 13.134 14 17 14C18.9584 14 20.729 13.1957 21.9995 11.8995C22 11.933 22 11.9665 22 12C22 17.5228 17.5228 22 12 22C6.47715 22 2 17.5228 2 12C2 6.47715 6.47715 2 12 2C12.0335 2 12.067 2 12.1005 2.00049C10.8043 3.27098 10 5.04157 10 7ZM4 12C4 16.4183 7.58172 20 12 20C15.0583 20 17.7158 18.2839 19.062 15.7621C18.3945 15.9187 17.7035 16 17 16C12.0294 16 8 11.9706 8 7C8 6.29648 8.08133 5.60547 8.2379 4.938C5.71611 6.28423 4 8.9417 4 12Z"></path></svg>
+      </span>
+    </span>
+  </div>
+  <div class="menu_off"></div>
+</section>

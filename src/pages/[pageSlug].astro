@@ -1,0 +1,38 @@
+---
+import BaseLayout from "../layouts/BaseLayout.astro";
+import Menu from "../components/Menu.astro";
+import Sidebar from "../components/Sidebar.astro";
+import { fetchPages, fetchPageBySlug } from "../lib/wp";
+
+export async function getStaticPaths() {
+  const pages = await fetchPages();
+  // do not collide with existing routes
+  const reserved = new Set(['links','archives','search','tag','category']);
+  return pages
+    .filter(p => !reserved.has(p.slug))
+    .map(p => ({ params: { pageSlug: p.slug } }));
+}
+
+const { pageSlug } = Astro.params;
+const pageData = await fetchPageBySlug(pageSlug);
+if (!pageData) throw new Error('Page not found');
+---
+<BaseLayout title={pageData.title.rendered}>
+  <div class="main_screen">
+    <Menu />
+    <div class="main">
+      <main class="main_body">
+        <div class="title_block cat_block">
+          <div class="title_block_title"><h1 set:html={pageData.title.rendered}></h1></div>
+        </div>
+        <article class="line-numbers">
+          <div class="post_content" set:html={pageData.content.rendered}></div>
+        </article>
+      </main>
+      <aside class="main_sidebar">
+        <Sidebar />
+      </aside>
+    </div>
+  </div>
+</BaseLayout>
+

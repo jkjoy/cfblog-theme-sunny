@@ -1,0 +1,46 @@
+---
+import BaseLayout from "../layouts/BaseLayout.astro";
+import Menu from "../components/Menu.astro";
+import Sidebar from "../components/Sidebar.astro";
+import { fetchPostsPage } from "../lib/wp";
+
+const s = Astro.url.searchParams.get('s') || '';
+const page = Number(Astro.url.searchParams.get('page') || '1');
+const perPage = 10;
+const { items: posts, totalPages } = await fetchPostsPage(page, perPage, s ? { search: s } : undefined);
+---
+<BaseLayout title={`🔍${s || '搜索'}`}>
+  <div class="main_screen">
+    <Menu />
+    <div class="main">
+      <main class="main_body">
+        <div class="title_block cat_block">
+          <div class="title_block_title"><h1>🔍{s || '搜索'}</h1></div>
+        </div>
+        <div class="postlist_out">
+          {posts.length ? posts.map((p, idx) => (
+            <div class="postlist cat_block" style={`animation-delay: ${200 * idx}ms;`}>
+              <div class="top">
+                <div class="right">
+                  <div class="postlist_title"><a href={`/${p.slug}/#read_article`} set:html={p.title.rendered}></a></div>
+                  <div class="postlist_abstract" set:html={p.excerpt.rendered}></div>
+                </div>
+              </div>
+            </div>
+          )) : (
+            <div class="cat_block">未找到匹配的内容</div>
+          )}
+        </div>
+      </main>
+      <aside class="main_sidebar">
+        <Sidebar />
+      </aside>
+    </div>
+  </div>
+  {posts.length && (
+    <div class="cat_archive_next">
+      {page < totalPages && <a class="next" href={`/search?s=${encodeURIComponent(s)}&page=${page+1}`}>more</a>}
+    </div>
+  )}
+</BaseLayout>
+

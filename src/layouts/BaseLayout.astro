@@ -1,0 +1,114 @@
+---
+import { fetchSiteInfo, fetchSettings } from '../lib/wp';
+
+const { title = 'Sunny Astro', description = 'Astro + WordPress' } = Astro.props;
+const siteInfo = await fetchSiteInfo();
+const siteName = siteInfo.name || 'Sunny';
+const settings = await fetchSettings();
+
+// 如果传入的 title 就是网站名称（首页），只显示网站名称
+// 否则显示 "页面标题 - 网站标题" 格式
+const pageTitle = title === siteName ? siteName : `${title} - ${siteName}`;
+
+const cssList = (import.meta.env.PUBLIC_SUNNY_CSS || '')
+  .split(',')
+  .map((s) => s.trim())
+  .filter(Boolean);
+const jsList = (import.meta.env.PUBLIC_SUNNY_JS || '')
+  .split(',')
+  .map((s) => s.trim())
+  .filter(Boolean);
+const headJs = jsList.filter((src) => /instantpage\.js$/i.test(src));
+const bodyJs = jsList.filter((src) => !/instantpage\.js$/i.test(src));
+---
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="light dark" />
+    <script>
+      (function(){
+        try {
+          var d=document, de=d.documentElement;
+          // Disable transitions during first paint to avoid flicker
+          var st=d.createElement('style'); st.id='no-transitions'; st.textContent='*{transition:none!important}'; d.head.appendChild(st);
+          // Apply dark class as early as possible based on SunnyLite cookie night=1
+          var m=(d.cookie||'').match(/(?:^|;\s*)night\s*=\s*(\d)/);
+          var isDark = !!(m && m[1] === '1');
+          if (isDark) {
+            de.classList.add('darkmode');
+            // Preflight BG/text to prevent white flash before CSS loads
+            de.style.background='#0b0b0b';
+            de.style.color='#e5e7eb';
+          }
+          // Remove preflight styles after first frame
+          d.addEventListener('DOMContentLoaded', function(){
+            var el=d.getElementById('no-transitions'); if(el && el.parentNode){el.parentNode.removeChild(el);} 
+            de.style.background=''; de.style.color='';
+          });
+        } catch (e) {}
+      })();
+    </script>
+    
+    <title>{pageTitle}</title>
+    <meta name="description" content={description} />
+    {cssList.map((href) => <link rel="stylesheet" href={href} />)}
+
+    <!-- 自定义头部 HTML -->
+    {settings.head_html && <Fragment set:html={settings.head_html} />}
+  </head>
+  <body>
+    <div id="page" class="site">
+      <header id="masthead" class="site-header">
+        <div class="site-branding"></div>
+      </header>
+
+      <div id="content" class="site-content">
+        <main id="main" class="site-main">
+          <slot />
+        </main>
+      </div>
+ 
+    </div>
+    {bodyJs.map((src) => <script src={src}></script>)}
+    <script>
+      (function(){
+        var CONTAINER = '.main_screen';
+        function isInternal(a){
+          try { var u=new URL(a.href, location.href); return u.origin===location.origin; } catch(e){ return false; }
+        }
+        function load(url, replaceHistory){
+          fetch(url, { credentials:'same-origin' })
+            .then(function(r){ return r.text(); })
+            .then(function(html){
+              var doc = new DOMParser().parseFromString(html, 'text/html');
+              var next = doc.querySelector(CONTAINER);
+              var curr = document.querySelector(CONTAINER);
+              if (next && curr) { curr.replaceWith(next); }
+              var t = doc.querySelector('title'); if (t) document.title = t.textContent || document.title;
+              if (replaceHistory) history.pushState({}, '', url);
+              if (window.lazySizes && typeof window.lazySizes.init==='function') window.lazySizes.init();
+              // 重新初始化代码复制功能
+              if (window.initCodeCopy && typeof window.initCodeCopy==='function') {
+                window.initCodeCopy();
+              }
+            })
+            .catch(function(){ location.href = url; });
+        }
+        document.addEventListener('click', function(e){
+          var a = e.target.closest && e.target.closest('a');
+          if (!a) return;
+          if (a.target==='_blank' || a.hasAttribute('download')) return;
+          if (!isInternal(a)) return;
+          var u = new URL(a.getAttribute('href'), location.href);
+          if (u.hash && u.pathname===location.pathname) return; // same-page anchor
+          e.preventDefault();
+          load(u.href, true);
+        }, true);
+        window.addEventListener('popstate', function(){ load(location.href, false); });
+      })();
+    </script>
+  </body>
+  </html>
+    {headJs.map((src) => <script type="module" src={src}></script>)}

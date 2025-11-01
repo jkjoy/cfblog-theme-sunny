@@ -1,0 +1,33 @@
+﻿---
+import BaseLayout from "../layouts/BaseLayout.astro";
+import Menu from "../components/Menu.astro";
+import Sidebar from "../components/Sidebar.astro";
+import { fetchLinks } from "../lib/wp";
+const links = (await fetchLinks()).filter(l => (l.visible || 'yes') === 'yes');
+---
+<BaseLayout title="友情链接">
+  <div class="main_screen">
+    <Menu />
+    <div class="main">
+      <main class="main_body">
+        <div class="title_block cat_block">
+          <div class="title_block_title"><h1>友情链接</h1></div>
+        </div>
+        <div class="links_part_grid">
+          {links.length ? links.map((l) => (
+            <a class="links_part_grid_item cat_block" href={l.url} target={l.target || "_blank"} rel="noopener noreferrer">
+              <img class="lazyload avatar" src="/style/lazy.png" data-src={l.avatar || '/style/avatar.png'} alt={l.name} />
+              <span class="links_author">{l.name}</span>
+              {l.description && <p class="links_description">{l.description}</p>}
+            </a>
+          )) : (
+            <div class="cat_block">暂无友链</div>
+          )}
+        </div>
+      </main>
+      <aside class="main_sidebar">
+        <Sidebar />
+      </aside>
+    </div>
+  </div>
+</BaseLayout>

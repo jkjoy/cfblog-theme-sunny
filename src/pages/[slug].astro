@@ -1,0 +1,160 @@
+---
+import BaseLayout from "../layouts/BaseLayout.astro";
+import Menu from "../components/Menu.astro";
+import Sidebar from "../components/Sidebar.astro";
+import Comments from "../components/Comments.astro";
+import { fetchUserById, fetchCommentsByPost } from "../lib/wp";
+import { fetchPosts, fetchPost } from "../lib/wp";
+// Simple Markdown to HTML converter (headings, lists, links, images, code)
+function escapeHtml(str: string): string {
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+function mdToHtml(md: string): string {
+  let out = md.replace(/\r\n?/g, '\n');
+  // code blocks ```lang\ncode```
+  out = out.replace(/```(\w+)?\n([\s\S]*?)```/g, (_m, lang, code) => {
+    const language = (lang || 'none').toString();
+    return `<pre class="line-numbers"><code class="language-${language}">${escapeHtml(code)}</code></pre>`;
+  });
+  // headings
+  for (let i = 6; i >= 1; i--) {
+    const re = new RegExp(`^${'#'.repeat(i)}\\s+(.+)$`, 'gm');
+    out = out.replace(re, `<h${i}>$1</h${i}>`);
+  }
+  // blockquotes
+  out = out.replace(/^>\s+(.+)$/gm, '<blockquote>$1</blockquote>');
+  // horizontal rule
+  out = out.replace(/^\s*---\s*$/gm, '<hr />');
+  // lists (unordered)
+  out = out.replace(/^(?:- |\* )(.+)(?:\n(?:- |\* ).+)*$/gm, (match) => {
+    const items = match.split('\n').map(l => l.replace(/^(?:- |\* )/, '').trim());
+    return `<ul>${items.map(it => `<li>${it}</li>`).join('')}</ul>`;
+  });
+  // ordered lists
+  out = out.replace(/^(?:\d+\. )(.+)(?:\n(?:\d+\. ).+)*$/gm, (match) => {
+    const items = match.split('\n').map(l => l.replace(/^\d+\. /, '').trim());
+    return `<ol>${items.map(it => `<li>${it}</li>`).join('')}</ol>`;
+  });
+  // images
+  out = out.replace(/!\[([^\]]*)\]\(([^\)]+)\)/g, '<img alt="$1" src="$2" />');
+  // links
+  out = out.replace(/\[([^\]]+)\]\(([^\)]+)\)/g, '<a href="$2">$1</a>');
+  // bold / italic / code inline
+  out = out.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+  out = out.replace(/\*([^*]+)\*/g, '<em>$1</em>');
+  out = out.replace(/`([^`]+)`/g, '<code>$1</code>');
+  // paragraphs: split on double newline
+  out = out.replace(/(^|\n)([^\n<][^\n]*)\n\n/g, (_m, p1, p2) => `${p1}<p>${p2}</p>\n`);
+  return out;
+}
+
+function normalizeCodeBlocks(html: string): string {
+  // WordPress 返回的是已经渲染的 HTML，我们只需要确保代码块有正确的结构
+  // Shiki 主要用于 Markdown，对于 WordPress HTML，我们用 CSS 来美化
+  return html;
+}
+
+export async function getStaticPaths() {
+  const posts = await fetchPosts();
+  return posts.map(p => ({ params: { slug: p.slug } }));
+}
+
+const { slug } = Astro.params;
+const post = await fetchPost(slug);
+if (!post) {
+  throw new Error('Post not found');
+}
+const admin = await fetchUserById(1);
+const adminName = admin.name;
+const comments = await fetchCommentsByPost(post.id);
+function withAvatarMirror(url: string | undefined): string {
+  const mirror = import.meta.env.PUBLIC_AVATAR_MIRROR || '';
+  if (!url) return 'https://cn.cravatar.com/avatar/';
+  if (!mirror) return url;
+  try {
+    const u = new URL(url);
+    u.hostname = mirror.replace(/^https?:\/\//,'').replace(/\/$/,'');
+    return u.toString();
+  } catch { return url || 'https://cn.cravatar.com/avatar/'; }
+}
+const adminAvatar = withAvatarMirror(admin.avatar_urls?.['96'] || admin.avatar_urls?.['48'] || '');
+const rawHtml = post.content?.rendered || '';
+const looksLikeMd = rawHtml && !rawHtml.trim().startsWith('<');
+const postHtml = normalizeCodeBlocks(looksLikeMd ? mdToHtml(rawHtml) : rawHtml);
+const terms = (post._embedded?.['wp:term'] || []).flat?.() || [];
+const tags = terms.filter((t: any) => t.taxonomy === 'post_tag');
+const modifiedStr = (post as any).modified || post.date;
+const modifiedTs = new Date(modifiedStr).getTime();
+const expiredDays = Math.floor((Date.now() - modifiedTs) / (24 * 60 * 60 * 1000));
+const isExpired = expiredDays > 90;
+
+function stripTags(html: string): string {
+  return (html || '').replace(/<[^>]*>/g, '');
+}
+function decodeEntities(str: string): string {
+  return (str || '')
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&#(\d+);/g, (_m, dec) => String.fromCharCode(parseInt(dec, 10)))
+    .replace(/&#x([0-9a-fA-F]+);/g, (_m, hex) => String.fromCharCode(parseInt(hex, 16)));
+}
+const titleText = decodeEntities(stripTags(post.title?.rendered || ''));
+---
+<BaseLayout title={titleText}>
+  <div class="main_screen">
+    <Menu />
+    <div class="main">
+      <main class="main_body">
+        <!-- 标题块（文章页） -->
+        <div class="title_block cat_block">
+          <div class="title_block_title">
+            <h1 set:html={post.title.rendered}></h1>
+            <div class="article_tags">
+              {tags.length ? (
+                <Fragment>
+                  <span>#</span>
+                  {tags.map((t: any, i: number) => (
+                    <Fragment>
+                      <a href={`/tag/${t.slug}/`}>{t.name}</a>
+                      {i < tags.length - 1 ? <span>　#</span> : null}
+                    </Fragment>
+                  ))}
+                </Fragment>
+              ) : (
+                <span>暂无标签</span>
+              )}
+            </div>
+          </div>
+        </div>
+
+        <!-- 文章正文（与 SunnyLite 结构对齐） -->
+        <article itemscope itemtype="http://schema.org/BlogPosting" class="line-numbers">
+          {isExpired && (
+            <div class="post_overtime">
+              ⚠️ 本文最后更新于{new Date(modifiedStr).toLocaleDateString('zh-CN')}，已经过了{expiredDays}天没有更新，若内容或图片失效，请留言反馈
+            </div>
+          )}
+          <div class="post_content" itemprop="articleBody" set:html={postHtml}></div>
+          <div class="article_end">
+            <span>By {adminName}</span>
+            <span>On <time datetime={new Date(post.date).toISOString()} itemprop="datePublished">{new Date(post.date).toLocaleDateString('zh-CN')}</time></span>
+          </div>
+        </article>
+
+        <!-- 评论区 -->
+        <Comments postId={post.id} comments={comments} authorId={1} />
+      </main>
+      <aside class="main_sidebar">
+        <Sidebar />
+      </aside>
+    </div>
+  </div>
+</BaseLayout>

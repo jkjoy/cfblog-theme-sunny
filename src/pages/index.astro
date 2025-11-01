@@ -1,0 +1,161 @@
+---
+import BaseLayout from "../layouts/BaseLayout.astro";
+import Menu from "../components/Menu.astro";
+import Sidebar from "../components/Sidebar.astro";
+import { fetchPostsPage, fetchUserById, fetchSiteInfo } from "../lib/wp";
+
+const page = Number(Astro.url.searchParams.get('page') || '1');
+const perPage = 10;
+const { items: posts, totalPages } = await fetchPostsPage(page, perPage);
+const admin = await fetchUserById(1);
+const siteInfo = await fetchSiteInfo();
+const adminName = admin.name;
+function withAvatarMirror(url: string | undefined): string {
+  const mirror = import.meta.env.PUBLIC_AVATAR_MIRROR || '';
+  if (!url) return 'https://cn.cravatar.com/avatar/';
+  if (!mirror) return url;
+  try {
+    const u = new URL(url);
+    u.hostname = mirror.replace(/^https?:\/\//,'').replace(/\/$/,'');
+    return u.toString();
+  } catch { return url || 'https://cn.cravatar.com/avatar/'; }
+}
+const adminAvatar = withAvatarMirror(admin.avatar_urls?.['96'] || admin.avatar_urls?.['48'] || '');
+function extractImages(html: string): string[] {
+  const urls: string[] = [];
+  const regex = /<img[^>]+src=["']([^"']+)["'][^>]*>/gi;
+  let m: RegExpExecArray | null;
+  while ((m = regex.exec(html)) && urls.length < 20) {
+    urls.push(m[1]);
+  }
+  return urls;
+}
+function relativeTime(dateStr: string): string {
+  const d = new Date(dateStr);
+  const now = new Date();
+  const diff = Math.max(0, now.getTime() - d.getTime());
+  const mins = Math.floor(diff / 60000);
+  if (mins < 60) return `${mins}分钟前`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `${hours}小时前`;
+  const days = Math.floor(hours / 24);
+  if (days < 30) return `${days}天前`;
+  const months = Math.floor(days / 30);
+  if (months < 12) return `${months}个月前`;
+  const years = Math.floor(months / 12);
+  return `${years}年前`;
+}
+function isNew(dateStr: string): boolean {
+  const created = new Date(dateStr).getTime();
+  return (Date.now() - created) <= 3 * 24 * 60 * 60 * 1000;
+}
+function relativeTime(dateStr: string): string {
+  const d = new Date(dateStr);
+  const now = new Date();
+  const diff = Math.max(0, now.getTime() - d.getTime());
+  const mins = Math.floor(diff / 60000);
+  if (mins < 60) return `${mins}分钟前`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `${hours}小时前`;
+  const days = Math.floor(hours / 24);
+  if (days < 30) return `${days}天前`;
+  const months = Math.floor(days / 30);
+  if (months < 12) return `${months}个月前`;
+  const years = Math.floor(months / 12);
+  return `${years}年前`;
+}
+---
+<BaseLayout title={siteInfo.name || 'Sunny'} description={siteInfo.description || 'Astro + WordPress'}>
+  <div class="main_screen">
+    <div class="loading_circle">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M18.364 5.63604L16.9497 7.05025C15.683 5.7835 13.933 5 12 5C8.13401 5 5 8.13401 5 12C5 15.866 8.13401 19 12 19C15.866 19 19 15.866 19 12H21C21 16.9706 16.9706 21 12 21C7.02944 21 3 16.9706 3 12C3 7.02944 7.02944 3 12 3C14.4853 3 16.7353 4.00736 18.364 5.63604Z"></path></svg>
+    </div>
+    <Menu />
+    <div class="main">
+      <main class="main_body">
+        <!-- 标题块（首页为空） -->
+        <!-- 文章块 -->
+        <div class="postlist_out">
+          {posts.map((p, idx) => {
+            const media = p._embedded?.['wp:featuredmedia']?.[0];
+            const thumb = media?.source_url || '';
+            const imgs = extractImages(p.content.rendered || '');
+            const imageCount = imgs.length;
+            const maxImages = Math.min(imageCount, 9);
+            
+            const tagsTerms = (p._embedded?.['wp:term'] || []).flat?.() || [];
+            const tags = tagsTerms.filter((t: any) => t.taxonomy === 'post_tag');
+            return (
+              <div class="postlist cat_block" style={`animation-delay: ${200 * idx}ms;`} itemscope itemtype="http://schema.org/BlogPosting">
+                <div class="top">
+                  {thumb && (
+                    <div class="left">
+                      <span class="postlist_gallery" href={thumb} data-fancybox={`gallery ${p.id}`}>
+                        <img class="lazyload postlist_img" src="/style/lazy.png" data-src={thumb} alt={p.title.rendered.replace(/<[^>]*>/g,'')} />
+                      </span>
+                    </div>
+                  )}
+                  <div class="right">
+                    <div class="postlist_title">
+                      <a href={`/${p.slug}/#read_article`} set:html={p.title.rendered}></a>
+                    </div>
+                    <div class="postlist_abstract" set:html={p.excerpt.rendered}></div>
+                  </div>
+                </div>
+                <div class="postlist_head">
+                  {adminAvatar && (
+                    <a href={`/${p.slug}/`}>
+                      <img class="avatar lazyload" src="/style/lazy.png" data-src={adminAvatar} alt={adminName} />
+                    </a>
+                  )}
+                  <div class="middle">
+                    <div class="top">{adminName}</div>
+                    <div class="bottom">
+                      <span cat_title={new Date(p.date).toLocaleDateString('zh-CN')}>{relativeTime(p.date)}</span>
+                      {isNew(p.date) && <span style="color:#ff000099;"> · NEW!</span>}
+                    </div>
+                  </div>
+                </div>
+                <div class="postlist_info">
+                  <div class="postlist_title">
+                    <a href={`/${p.slug}/#read_article`} set:html={p.title.rendered}></a>
+                  </div>
+                  {imageCount === 0 && (
+                    <div class="postlist_abstract" set:html={p.excerpt.rendered}></div>
+                  )}
+                  {imageCount > 0 && (
+                    <div class="postlist_album" num={String(imageCount)}>
+                      {Array.from({ length: maxImages }).map((_, i) => (
+                        <span data-fancybox={`gallery${p.id}`} class="postlist_gallery" href={imgs[i]}>
+                          <img class="lazyload postlist_img" src="/style/lazy.png" data-src={imgs[i]} alt={p.title.rendered.replace(/<[^>]*>/g,'')} />
+                          {imageCount > 9 && i === 8 && (
+                            <span class="mask"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M11 11V5H13V11H19V13H13V19H11V13H5V11H11Z"></path></svg>{imageCount - 9}</span>
+                          )}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                  <div class="postlist_tags" itemprop="keywords">
+                    <a href={`/${p.slug}/#comments`}>
+                      <span class="pinglun">评论</span>
+                    </a>
+                    {tags.map((t: any) => (
+                      <a href={`/tag/${t.slug}/`}>{t.name}</a>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </main>
+      <aside class="main_sidebar">
+        <Sidebar />
+      </aside>
+    </div>
+  </div>
+
+  <div class="cat_archive_next">
+    {page < totalPages && <a class="next" href={`/?page=${page+1}`}>more</a>}
+  </div>
+</BaseLayout>
