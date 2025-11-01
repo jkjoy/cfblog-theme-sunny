@@ -26,6 +26,7 @@ const jsList = [
   '/style/lazysizes.min.js',
   '/style/main.js',
   '/style/code-copy.js',
+  '/style/comments.js',
   '/style/instantpage.js',
 ];
 
@@ -104,6 +105,10 @@ const bodyJs = jsList.filter((src) => !/instantpage\.js$/i.test(src));
               // 重新初始化代码复制功能
               if (window.initCodeCopy && typeof window.initCodeCopy==='function') {
                 window.initCodeCopy();
+              }
+              // 重新初始化评论系统
+              if (window.initComments && typeof window.initComments==='function') {
+                window.initComments();
               }
             })
             .catch(function(){ location.href = url; });

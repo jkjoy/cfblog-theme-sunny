@@ -3,7 +3,7 @@ import BaseLayout from "../layouts/BaseLayout.astro";
 import Menu from "../components/Menu.astro";
 import Sidebar from "../components/Sidebar.astro";
 import Comments from "../components/Comments.astro";
-import { fetchUserById, fetchCommentsByPost } from "../lib/wp";
+import { fetchUserById } from "../lib/wp";
 import { fetchPosts, fetchPost } from "../lib/wp";
 // Simple Markdown to HTML converter (headings, lists, links, images, code)
 function escapeHtml(str: string): string {
@@ -71,7 +71,6 @@ if (!post) {
 }
 const admin = await fetchUserById(1);
 const adminName = admin.name;
-const comments = await fetchCommentsByPost(post.id);
 function withAvatarMirror(url: string | undefined): string {
   const mirror = import.meta.env.PUBLIC_AVATAR_MIRROR || '';
   if (!url) return 'https://cn.cravatar.com/avatar/';
@@ -150,7 +149,7 @@ const titleText = decodeEntities(stripTags(post.title?.rendered || ''));
         </article>
 
         <!-- 评论区 -->
-        <Comments postId={post.id} comments={comments} authorId={1} />
+        <Comments postId={post.id} authorId={1} />
       </main>
       <aside class="main_sidebar">
         <Sidebar />
