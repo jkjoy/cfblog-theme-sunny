@@ -71,6 +71,22 @@ if (!post) {
 }
 const admin = await fetchUserById(1);
 const adminName = admin.name;
+
+// 获取标签信息
+let tags: any[] = [];
+if (post.tags && post.tags.length > 0) {
+  try {
+    const tagIds = post.tags;
+    const tagPromises = tagIds.map((id: number) =>
+      fetch(`${import.meta.env.PUBLIC_WP_URL}/wp-json/wp/v2/tags/${id}`)
+        .then(res => res.ok ? res.json() : null)
+    );
+    const tagResults = await Promise.all(tagPromises);
+    tags = tagResults.filter(Boolean);
+  } catch (error) {
+    console.error('Failed to fetch tags:', error);
+  }
+}
 function withAvatarMirror(url: string | undefined): string {
   const mirror = import.meta.env.PUBLIC_AVATAR_MIRROR || '';
   if (!url) return 'https://cn.cravatar.com/avatar/';
@@ -85,8 +101,6 @@ const adminAvatar = withAvatarMirror(admin.avatar_urls?.['96'] || admin.avatar_u
 const rawHtml = post.content?.rendered || '';
 const looksLikeMd = rawHtml && !rawHtml.trim().startsWith('<');
 const postHtml = normalizeCodeBlocks(looksLikeMd ? mdToHtml(rawHtml) : rawHtml);
-const terms = (post._embedded?.['wp:term'] || []).flat?.() || [];
-const tags = terms.filter((t: any) => t.taxonomy === 'post_tag');
 const modifiedStr = (post as any).modified || post.date;
 const modifiedTs = new Date(modifiedStr).getTime();
 const expiredDays = Math.floor((Date.now() - modifiedTs) / (24 * 60 * 60 * 1000));
