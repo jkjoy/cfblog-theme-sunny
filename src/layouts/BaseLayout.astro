@@ -10,14 +10,26 @@ const settings = await fetchSettings();
 // 否则显示 "页面标题 - 网站标题" 格式
 const pageTitle = title === siteName ? siteName : `${title} - ${siteName}`;
 
-const cssList = (import.meta.env.PUBLIC_SUNNY_CSS || '')
-  .split(',')
-  .map((s) => s.trim())
-  .filter(Boolean);
-const jsList = (import.meta.env.PUBLIC_SUNNY_JS || '')
-  .split(',')
-  .map((s) => s.trim())
-  .filter(Boolean);
+// CSS 列表（按顺序引入）
+const cssList = [
+  '/style/fancybox.css',
+  '/style/main.css',
+  '/style/article.css',
+  '/style/code-macos.css',
+];
+
+// JS 列表（按顺序引入，jquery 需在最前）
+const jsList = [
+  '/style/jquery.min.js',
+  '/style/fancybox.umd.js',
+  '/style/jquery.md5.min.js',
+  '/style/lazysizes.min.js',
+  '/style/main.js',
+  '/style/code-copy.js',
+  '/style/instantpage.js',
+];
+
+// instantpage.js 需要放在 head 中使用 type="module"
 const headJs = jsList.filter((src) => /instantpage\.js$/i.test(src));
 const bodyJs = jsList.filter((src) => !/instantpage\.js$/i.test(src));
 ---
