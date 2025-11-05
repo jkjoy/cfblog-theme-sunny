@@ -2,11 +2,13 @@
 import BaseLayout from "../layouts/BaseLayout.astro";
 import Menu from "../components/Menu.astro";
 import Sidebar from "../components/Sidebar.astro";
-import { fetchPostsPage, fetchUserById, fetchSiteInfo } from "../lib/wp";
+import { fetchPostsPage, fetchUserById, fetchSiteInfo, fetchCommentCounts } from "../lib/wp";
 
 const page = Number(Astro.url.searchParams.get('page') || '1');
 const perPage = 10;
 const { items: posts, totalPages } = await fetchPostsPage(page, perPage);
+// Fetch comment counts for the posts on this page
+const commentCountMap = await fetchCommentCounts(posts.map(p => p.id));
 const admin = await fetchUserById(1);
 const siteInfo = await fetchSiteInfo();
 const adminName = admin.name;
@@ -137,7 +139,7 @@ function relativeTime(dateStr: string): string {
                   )}
                   <div class="postlist_tags" itemprop="keywords">
                     <a href={`/${p.slug}/#comments`}>
-                      <span class="pinglun">评论</span>
+                      <span class="pinglun">评论{(() => { const n = commentCountMap.get(p.id) || 0; return n ? ` ${n}` : '' })()}</span>
                     </a>
                     {tags.map((t: any) => (
                       <a href={`/tag/${t.slug}/`}>{t.name}</a>

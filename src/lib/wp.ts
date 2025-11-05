@@ -172,6 +172,25 @@ export async function fetchCommentsByPost(postId: number): Promise<WPComment[]> 
   return res.json();
 }
 
+// Fetch total comment count for a given post via X-WP-Total header
+export async function fetchCommentCount(postId: number): Promise<number> {
+  if (!wpUrl) throw new Error('PUBLIC_WP_URL is not set');
+  const res = await fetch(`${wpUrl}/wp-json/wp/v2/comments?post=${postId}&per_page=1`);
+  if (!res.ok) return 0;
+  const total = Number(res.headers.get('X-WP-Total') || '0');
+  return Number.isFinite(total) ? total : 0;
+}
+
+// Batch fetch comment counts for multiple posts
+export async function fetchCommentCounts(postIds: number[]): Promise<Map<number, number>> {
+  if (!postIds || postIds.length === 0) return new Map();
+  const pairs = await Promise.all(postIds.map(async (id) => {
+    try { return [id, await fetchCommentCount(id)] as const; }
+    catch { return [id, 0] as const; }
+  }));
+  return new Map<number, number>(pairs);
+}
+
 export async function fetchPostsByTag(tagId: number, page = 1, perPage = 10): Promise<WPPostsResponse> {
   if (!wpUrl) throw new Error('PUBLIC_WP_URL is not set');
   const res = await fetch(`${wpUrl}/wp-json/wp/v2/posts?tags=${tagId}&per_page=${perPage}&page=${page}&_embed`);

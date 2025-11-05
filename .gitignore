@@ -1,3 +1,5 @@
 .env
 /node_modules
 /.astro
+tmp_before.css
+tmp_segment.css
