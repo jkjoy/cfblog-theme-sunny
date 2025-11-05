@@ -443,34 +443,6 @@ cat_music span svg {
     fill: var(--main);
 }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 /* 评论 */
 .cat_cancel_comment_reply {
     display: none;
@@ -570,61 +542,6 @@ cat_article_video video {
 }
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 #comments .cat_comment_replyout {
     margin: 1rem;
 }
@@ -662,13 +579,6 @@ cat_article_video video {
 #comments .huomiaoreply .cat_comment_body .content .substance{
     margin-left: auto;
 }
-
-
-
-
-
-
-
 
 #comments .cat_comment_body .avatar {
     width: 3rem;
@@ -769,4 +679,12 @@ cat_article_video video {
     padding: 0.5rem 0.4rem;
     line-height: 2.5rem;
     cursor: pointer;
+}
+/* Responsive images inside article content */
+article .post_content img,
+article .post_content figure img,
+article img {
+  max-width: 100% !important;
+  height: auto !important;
+  display: block;
 }

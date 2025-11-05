@@ -3,17 +3,22 @@ import BaseLayout from "../layouts/BaseLayout.astro";
 import Menu from "../components/Menu.astro";
 import Sidebar from "../components/Sidebar.astro";
 import { fetchAllPosts } from "../lib/wp";
+
 const posts = await fetchAllPosts(50, 100);
-const groups = posts.reduce((acc: Record<string, { y: number, m: number, arr: typeof posts }>, p) => {
+
+// Group posts by year, then by month to avoid repeating the year header
+type MonthGroups = Record<number, typeof posts>;
+type YearGroup = { y: number; months: MonthGroups };
+const yearGroups = posts.reduce((acc: Record<number, YearGroup>, p) => {
   const d = new Date(p.date);
   const y = d.getFullYear();
   const m = d.getMonth() + 1;
-  const key = `${y}-${m}`;
-  acc[key] = acc[key] || { y, m, arr: [] };
-  acc[key].arr.push(p);
+  acc[y] = acc[y] || { y, months: {} } as YearGroup;
+  acc[y].months[m] = acc[y].months[m] || [];
+  acc[y].months[m].push(p);
   return acc;
-}, {} as Record<string, { y: number, m: number, arr: typeof posts }>);
-const sortedKeys = Object.keys(groups).sort((a,b) => a > b ? -1 : 1);
+}, {} as Record<number, YearGroup>);
+const sortedYears = Object.keys(yearGroups).map(Number).sort((a, b) => b - a);
 ---
 <BaseLayout title="📁统计归档">
   <div class="main_screen">
@@ -22,20 +27,25 @@ const sortedKeys = Object.keys(groups).sort((a,b) => a > b ? -1 : 1);
       <main class="main_body">
         <div class="cat_guidang">
           <div class="cat_block">
-            {sortedKeys.map((key) => {
-              const g = groups[key];
+            {sortedYears.map((y) => {
+              const months = yearGroups[y].months;
+              const sortedMonths = Object.keys(months).map(Number).sort((a, b) => b - a);
               return (
                 <>
-                  <h3 style="text-align: center;padding: 2rem;">📁 {g.y} 年</h3>
+                  <h3 style="text-align: center;padding: 2rem;">📁 {y} 年</h3>
                   <ul>
-                    <li>
-                      <div style="padding-left: 4.2rem;">📅 {g.y} 年 {g.m} 月</div>
-                      <ul class="cat_block">
-                        {g.arr.sort((a,b)=> new Date(a.date) > new Date(b.date) ? -1 : 1).map(p => (
-                          <li class="item"><span>{new Date(p.date).getDate()}</span><a href={`/${p.slug}/` } set:html={p.title.rendered}></a></li>
-                        ))}
-                      </ul>
-                    </li>
+                    {sortedMonths.map((m) => (
+                      <li>
+                        <div style="padding-left: 4.2rem;">📅 {y} 年 {m} 月</div>
+                        <ul class="cat_block">
+                          {months[m]
+                            .sort((a,b)=> new Date(a.date) > new Date(b.date) ? -1 : 1)
+                            .map(p => (
+                              <li class="item"><span>{new Date(p.date).getDate()}</span><a href={`/${p.slug}/` } set:html={p.title.rendered}></a></li>
+                            ))}
+                        </ul>
+                      </li>
+                    ))}
                   </ul>
                 </>
               );
@@ -49,3 +59,4 @@ const sortedKeys = Object.keys(groups).sort((a,b) => a > b ? -1 : 1);
     </div>
   </div>
 </BaseLayout>
+
