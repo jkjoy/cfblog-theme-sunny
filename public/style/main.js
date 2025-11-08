@@ -94,11 +94,13 @@ $('body').on('click','.cat_archive_next a.next',function(e) {
     if (href != undefined) {
         var reqUrl = href;
         try { reqUrl = new URL(href, window.location.href).href; } catch (e) {}
+        try { console.debug('[load-more] request:', reqUrl); } catch (e) {}
         $.ajax({
             url: reqUrl,
             type: 'get',
             cache: false,
             error: function(request) {
+                try { console.debug('[load-more] request failed'); } catch (e) {}
             },
             success: function(data) {
                 $this.removeClass('loading').text("more");
@@ -112,9 +114,12 @@ $('body').on('click','.cat_archive_next a.next',function(e) {
                 var $next = $('.cat_archive_next a.next');
                 if (newhref) {
                     $next.attr('href', newhref).removeClass('loading').text('more');
+                    try { console.debug('[load-more] next href updated:', newhref); } catch (e) {}
                 } else {
                     $next.remove();
                     $('.cat_archive_next').append('<span class="over">已全部加载</span>');
+                    try { console.debug('[load-more] no more pages'); } catch (e) {}
+                    try { if (window.__loadMoreIO && typeof window.__loadMoreIO.disconnect==='function') window.__loadMoreIO.disconnect(); } catch (e) {}
                 }
                 // 兼容重新初始化懒加载/代码复制/评论等
                 if (window.lazySizes && typeof window.lazySizes.init === 'function') {
@@ -125,6 +130,10 @@ $('body').on('click','.cat_archive_next a.next',function(e) {
                 }
                 if (window.initComments && typeof window.initComments === 'function') {
                     window.initComments();
+                }
+                // 重新绑定观察器，确保新 next 被监听
+                if (window.initLoadMore && typeof window.initLoadMore==='function') {
+                    window.initLoadMore();
                 }
                 isLoading = false;
             }
@@ -157,6 +166,15 @@ window.initLoadMore = function() {
     }, { root: null, rootMargin: '100px', threshold: 0 });
     io.observe(next);
     window.__loadMoreIO = io;
+    // 若 next 初始就在视口内，立即触发一次
+    try {
+        var rect = next.getBoundingClientRect();
+        var vh = window.innerHeight || document.documentElement.clientHeight;
+        if (rect.top < vh + 50 && rect.bottom > -50 && !isLoading) {
+            setTimeout(function(){ $(next).trigger('click'); }, 50);
+        }
+        console.debug('[load-more] init');
+    } catch (e) {}
 };
 // 首次页面加载时初始化
 window.initLoadMore();
