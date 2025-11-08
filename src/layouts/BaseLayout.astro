@@ -110,6 +110,10 @@ const bodyJs = jsList.filter((src) => !/instantpage\.js$/i.test(src));
               if (window.initComments && typeof window.initComments==='function') {
                 window.initComments();
               }
+              // 重新初始化无限加载（返回首页或含有分页时）
+              if (window.initLoadMore && typeof window.initLoadMore==='function') {
+                window.initLoadMore();
+              }
             })
             .catch(function(){ location.href = url; });
         }

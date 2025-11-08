@@ -134,32 +134,32 @@ $('body').on('click','.cat_archive_next a.next',function(e) {
 });
 
 // 使用 IntersectionObserver 自动无感加载（滚动兼容保留）
-if ('IntersectionObserver' in window) {
-    var io;
-    var observeMore = function() {
-        var $next = document.querySelector('.cat_archive_next .next');
-        if (!$next) return;
-        if (io) { io.disconnect(); }
-        io = new IntersectionObserver(function(entries){
-            entries.forEach(function(entry){
-                if (entry.isIntersecting && !isLoading) {
-                    isLoading = true;
-                    setTimeout(function(){
-                        $($next).trigger('click');
-                    }, 100);
-                }
-            });
-        }, { root: null, rootMargin: '100px', threshold: 0 });
-        io.observe($next);
-    };
-    // 初始与每次加载后尝试观察新的 next
-    observeMore();
-    $(document).on('DOMNodeInserted', function(e){
-        if ($(e.target).is('.cat_archive_next') || $(e.target).find('.cat_archive_next .next').length) {
-            observeMore();
+// 提供可重复初始化的无限加载观察器（供 PJAX 后调用）
+window.initLoadMore = function() {
+    isLoading = false;
+    if (!('IntersectionObserver' in window)) return;
+    try {
+        if (window.__loadMoreIO && typeof window.__loadMoreIO.disconnect === 'function') {
+            window.__loadMoreIO.disconnect();
         }
-    });
-}
+    } catch (e) {}
+    var next = document.querySelector('.cat_archive_next a.next');
+    if (!next) return;
+    var io = new IntersectionObserver(function(entries){
+        entries.forEach(function(entry){
+            if (entry.isIntersecting && !isLoading) {
+                isLoading = true;
+                setTimeout(function(){
+                    $(next).trigger('click');
+                }, 100);
+            }
+        });
+    }, { root: null, rootMargin: '100px', threshold: 0 });
+    io.observe(next);
+    window.__loadMoreIO = io;
+};
+// 首次页面加载时初始化
+window.initLoadMore();
 
 /* 点击回复某人 */
 $('.main').on('click', '.cat_comment_reply', function () {
