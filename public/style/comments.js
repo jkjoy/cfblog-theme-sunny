@@ -400,74 +400,87 @@
   }
 
   /**
+   * 侧边栏：初始化最新评论列表（始终尝试）
+   */
+  function initRecentComments() {
+    const recentSection = document.getElementById('recent-comments');
+    if (!recentSection) return;
+
+    // 清理旧的渲染，避免重复叠加（例如 PJAX 重新初始化）
+    recentSection.querySelectorAll('.cat_recentcomment_list').forEach(function(el){ el.remove(); });
+
+    const wp = recentSection.getAttribute('data-wp-url');
+    const loading = recentSection.querySelector('[data-role="recent-loading"]');
+    if (!wp) {
+      if (loading) loading.innerHTML = '<div style="text-align:center; padding: 1rem; color: var(--B);">未配置 WordPress 地址</div>';
+      return;
+    }
+
+    fetch(`${wp}/wp-json/wp/v2/comments?per_page=5&orderby=date&order=desc&_embed`)
+      .then(function(r){ return r.json(); })
+      .then(function(arr){
+        const frag = document.createDocumentFragment();
+        arr.forEach(function(c){
+          const box = document.createElement('div');
+          box.className = 'cat_block cat_recentcomment_list';
+
+          const left = document.createElement('div'); left.className = 'left';
+          const right = document.createElement('div'); right.className = 'right';
+
+          const img = document.createElement('img'); img.className = 'avatar lazyload';
+          img.src = '/style/lazy.png';
+          img.setAttribute('data-src', (c.author_avatar_urls && (c.author_avatar_urls['48'] || c.author_avatar_urls['96'])) || '/style/avatar.png');
+          img.alt = c.author_name || '';
+          left.appendChild(img);
+
+          const user = document.createElement('div'); user.className = 'user';
+          const name = document.createElement('div'); name.className = 'name'; name.textContent = c.author_name || '';
+          const time = document.createElement('time'); time.className = 'smalltext'; time.textContent = new Date(c.date).toLocaleDateString('zh-CN');
+          user.appendChild(name); user.appendChild(time);
+
+          const reply = document.createElement('div'); reply.className = 'reply';
+          const a = document.createElement('a'); a.className = 'recent-comment-item';
+          a.innerHTML = (c.content && c.content.rendered) || '';
+          var href = c.link || (c._embedded && c._embedded.up && c._embedded.up[0] && c._embedded.up[0].link) || '';
+          try {
+            var u = new URL(href);
+            var path = u.pathname.replace(/\/$/, '');
+            var slug = path.split('/').filter(Boolean).pop() || '';
+            href = slug ? `/${slug}/#comments` : '#';
+          } catch (e) {}
+          a.href = href;
+          reply.appendChild(a);
+
+          right.appendChild(user);
+          right.appendChild(reply);
+
+          box.appendChild(left);
+          box.appendChild(right);
+
+          frag.appendChild(box);
+        });
+        if (loading) loading.remove();
+        const infoCard = recentSection.querySelector('.aside_info_card');
+        if (infoCard && infoCard.parentNode === recentSection) {
+          recentSection.insertBefore(frag, infoCard);
+        } else {
+          recentSection.appendChild(frag);
+        }
+      })
+      .catch(function(){
+        if (loading) loading.innerHTML = '<div style="text-align:center; padding: 1rem; color: var(--B);">最新评论加载失败</div>';
+      });
+  }
+
+  /**
    * 初始化
    */
   function init() {
+    // 无论是否存在评论区，都尝试初始化侧边栏最新评论
+    initRecentComments();
+
     const commentsDiv = document.getElementById('comments');
     if (!commentsDiv) {
-      // Also support recent comments in sidebar via #recent-comments section
-      const recentSection = document.getElementById('recent-comments');
-      if (recentSection) {
-        const wp = recentSection.getAttribute('data-wp-url');
-        if (!wp) return;
-        fetch(`${wp}/wp-json/wp/v2/comments?per_page=5&orderby=date&order=desc&_embed`)
-          .then(r => r.json())
-          .then(arr => {
-            const frag = document.createDocumentFragment();
-            arr.forEach(c => {
-              const box = document.createElement('div');
-              box.className = 'cat_block cat_recentcomment_list';
-
-              const left = document.createElement('div'); left.className = 'left';
-              const right = document.createElement('div'); right.className = 'right';
-
-              const img = document.createElement('img'); img.className = 'avatar lazyload';
-              img.src = '/style/lazy.png';
-              img.setAttribute('data-src', c.author_avatar_urls?.['48'] || c.author_avatar_urls?.['96'] || '/style/avatar.png');
-              img.alt = c.author_name || '';
-              left.appendChild(img);
-
-              const user = document.createElement('div'); user.className = 'user';
-              const name = document.createElement('div'); name.className = 'name'; name.textContent = c.author_name || '';
-              const time = document.createElement('time'); time.className = 'smalltext'; time.textContent = new Date(c.date).toLocaleDateString('zh-CN');
-              user.appendChild(name); user.appendChild(time);
-
-              const reply = document.createElement('div'); reply.className = 'reply';
-              const a = document.createElement('a'); a.className = 'recent-comment-item';
-              a.innerHTML = c.content?.rendered || '';
-              let href = c.link || (c._embedded?.up?.[0]?.link ?? '');
-              try {
-                const u = new URL(href);
-                const path = u.pathname.replace(/\/$/, '');
-                const slug = path.split('/').filter(Boolean).pop() || '';
-                href = slug ? `/${slug}/#comments` : '#';
-              } catch {}
-              a.href = href;
-              reply.appendChild(a);
-
-              right.appendChild(user);
-              right.appendChild(reply);
-
-              box.appendChild(left);
-              box.appendChild(right);
-
-              frag.appendChild(box);
-            });
-            const loading = recentSection.querySelector('[data-role="recent-loading"]');
-            if (loading) loading.remove();
-            // insert before the aside_info_card block if present
-            const infoCard = recentSection.querySelector('.aside_info_card');
-            if (infoCard && infoCard.parentNode === recentSection) {
-              recentSection.insertBefore(frag, infoCard);
-            } else {
-              recentSection.appendChild(frag);
-            }
-          })
-          .catch(() => {
-            const loading = recentSection.querySelector('[data-role="recent-loading"]');
-            if (loading) loading.innerHTML = '<div style="text-align:center; padding: 1rem; color: var(--B);">最新评论加载失败</div>';
-          });
-      }
       return;
     }
 
