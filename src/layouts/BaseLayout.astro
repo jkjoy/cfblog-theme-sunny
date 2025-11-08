@@ -116,6 +116,8 @@ const bodyJs = jsList.filter((src) => !/instantpage\.js$/i.test(src));
         document.addEventListener('click', function(e){
           var a = e.target.closest && e.target.closest('a');
           if (!a) return;
+          // Skip PJAX for 'more' pagination anchors to allow AJAX append
+          if (a.closest('.cat_archive_next')) return;
           if (a.target==='_blank' || a.hasAttribute('download')) return;
           if (!isInternal(a)) return;
           var u = new URL(a.getAttribute('href'), location.href);
