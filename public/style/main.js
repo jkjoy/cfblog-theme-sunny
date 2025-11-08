@@ -105,17 +105,10 @@ $('body').on('click','.cat_archive_next a.next',function(e) {
                 
                 var $html = $('<div></div>').append($.parseHTML(data));
                 var $res = $html.find('.postlist');
-                $('.postlist_out').append($res.fadeIn(500));
-                var newhref = $html.find('.cat_archive_next a.next').attr('href');
-                if (!newhref) {
-                    // fallback: increment current page param
-                    try {
-                        var u = new URL(reqUrl, window.location.href);
-                        var curr = parseInt(u.searchParams.get('page') || '1', 10);
-                        u.searchParams.set('page', String(curr + 1));
-                        newhref = u.pathname + u.search;
-                    } catch (e) {}
+                if ($res.length > 0) {
+                    $('.postlist_out').append($res.fadeIn(500));
                 }
+                var newhref = $html.find('.cat_archive_next a.next').attr('href');
                 var $next = $('.cat_archive_next a.next');
                 if (newhref) {
                     $next.attr('href', newhref).removeClass('loading').text('more');
