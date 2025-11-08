@@ -18,16 +18,30 @@ const { items: posts, totalPages } = await fetchPostsPage(page, perPage, s ? { s
           <div class="title_block_title"><h1>🔍{s || '搜索'}</h1></div>
         </div>
         <div class="postlist_out">
-          {posts.length ? posts.map((p, idx) => (
-            <div class="postlist cat_block" style={`animation-delay: ${200 * idx}ms;`}>
-              <div class="top">
-                <div class="right">
-                  <div class="postlist_title"><a href={`/${p.slug}/#read_article`} set:html={p.title.rendered}></a></div>
-                  <div class="postlist_abstract" set:html={p.excerpt.rendered}></div>
+          {posts.length ? posts.map((p, idx) => {
+            const tagsTerms = (p._embedded?.['wp:term'] || []).flat?.() || [];
+            const tags = tagsTerms.filter((t: any) => t.taxonomy === 'post_tag');
+            return (
+              <div class="postlist cat_block" style={`animation-delay: ${200 * idx}ms;`}>
+                <div class="top">
+                  <div class="right">
+                    <div class="postlist_title"><a href={`/${p.slug}/#read_article`} set:html={p.title.rendered}></a></div>
+                    <div class="postlist_abstract" set:html={p.excerpt.rendered}></div>
+                  </div>
+                </div>
+                <div class="postlist_info">
+                  <div class="postlist_tags" itemprop="keywords">
+                    <a href={`/${p.slug}/#comments`}>
+                      <span class="pinglun">评论</span>
+                    </a>
+                    {tags.map((t: any) => (
+                      <a href={`/tag/${t.slug}/`}>{t.name}</a>
+                    ))}
+                  </div>
                 </div>
               </div>
-            </div>
-          )) : (
+            );
+          }) : (
             <div class="cat_block">未找到匹配的内容</div>
           )}
         </div>
@@ -43,4 +57,3 @@ const { items: posts, totalPages } = await fetchPostsPage(page, perPage, s ? { s
     </div>
   )}
 </BaseLayout>
-

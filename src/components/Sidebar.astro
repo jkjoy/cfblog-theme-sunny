@@ -1,32 +1,7 @@
 ---
-import { fetchTags, fetchRecentComments, fetchSettings, fetchPostsByIds, WPPost } from "../lib/wp";
+import { fetchTags, fetchSettings } from "../lib/wp";
 const tags = await fetchTags(20);
-const comments = await fetchRecentComments(5);
-// Map comment.post IDs to post slugs to build correct URLs
-const postIds = Array.from(new Set(comments.map(c => c.post).filter(Boolean)));
-let idToSlug = new Map<number, string>();
-if (postIds.length) {
-  const posts: WPPost[] = await fetchPostsByIds(postIds);
-  idToSlug = new Map(posts.map(p => [p.id, p.slug] as const));
-}
 const settings = await fetchSettings();
-
-function commentLinkFor(c: any): string {
-  const slug = idToSlug.get(c.post);
-  if (slug) return `/${slug}/#comments`;
-  // Fallback: try embedded post link or comment link
-  const absUrl = (c as any)?._embedded?.up?.[0]?.link || c.link;
-  if (!absUrl) return '#';
-  try {
-    const u = new URL(absUrl);
-    const path = u.pathname.replace(/\/$/, '');
-    const parts = path.split('/').filter(Boolean);
-    const last = parts[parts.length - 1] || '';
-    return last ? `/${last}/#comments` : '#';
-  } catch {
-    return '#';
-  }
-}
 ---
 <section class="cat_block">
   <div class="little_card_title">Search</div>
@@ -44,25 +19,8 @@ function commentLinkFor(c: any): string {
   </div>
 </section>
 
-<section class="recent_comments">
-  {comments.length ? comments.map((c) => (
-    <div class="cat_block cat_recentcomment_list">
-      <div class="left">
-        <img class="avatar lazyload" src="/style/lazy.png" data-src={c.author_avatar_urls?.['48'] || c.author_avatar_urls?.['96'] || '/style/avatar.png'} alt={c.author_name} />
-      </div>
-      <div class="right" cat_title={`来自 ${c.author_name}`}>
-        <div class="user">
-          <div class="name">{c.author_name}</div>
-          <time class="smalltext" cat_title={new Date(c.date).toLocaleString('zh-CN')}>{new Date(c.date).toLocaleDateString('zh-CN')}</time>
-        </div>
-        <div class="reply">
-          <a href={commentLinkFor(c)} set:html={c.content.rendered}></a>
-        </div>
-      </div>
-    </div>
-  )) : (
-    <div class="cat_block">😎小站还没有评论呢</div>
-  )}
+<section id="recent-comments" class="recent_comments" data-wp-url={import.meta.env.PUBLIC_WP_URL?.replace(/\/$/, '')}>
+  <div class="cat_block" data-role="recent-loading" style="text-align:center; padding: 1rem; color: var(--B);">最新评论加载中...</div>
   <div class="cat_block aside_info_card">
     <div class="little_card_title">Info</div>
     <p set:html={settings.site_footer_text || 'Powered by Sunny Lite!'}></p>

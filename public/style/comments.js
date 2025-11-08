@@ -404,7 +404,72 @@
    */
   function init() {
     const commentsDiv = document.getElementById('comments');
-    if (!commentsDiv) return;
+    if (!commentsDiv) {
+      // Also support recent comments in sidebar via #recent-comments section
+      const recentSection = document.getElementById('recent-comments');
+      if (recentSection) {
+        const wp = recentSection.getAttribute('data-wp-url');
+        if (!wp) return;
+        fetch(`${wp}/wp-json/wp/v2/comments?per_page=5&orderby=date&order=desc&_embed`)
+          .then(r => r.json())
+          .then(arr => {
+            const frag = document.createDocumentFragment();
+            arr.forEach(c => {
+              const box = document.createElement('div');
+              box.className = 'cat_block cat_recentcomment_list';
+
+              const left = document.createElement('div'); left.className = 'left';
+              const right = document.createElement('div'); right.className = 'right';
+
+              const img = document.createElement('img'); img.className = 'avatar lazyload';
+              img.src = '/style/lazy.png';
+              img.setAttribute('data-src', c.author_avatar_urls?.['48'] || c.author_avatar_urls?.['96'] || '/style/avatar.png');
+              img.alt = c.author_name || '';
+              left.appendChild(img);
+
+              const user = document.createElement('div'); user.className = 'user';
+              const name = document.createElement('div'); name.className = 'name'; name.textContent = c.author_name || '';
+              const time = document.createElement('time'); time.className = 'smalltext'; time.textContent = new Date(c.date).toLocaleDateString('zh-CN');
+              user.appendChild(name); user.appendChild(time);
+
+              const reply = document.createElement('div'); reply.className = 'reply';
+              const a = document.createElement('a'); a.className = 'recent-comment-item';
+              a.innerHTML = c.content?.rendered || '';
+              let href = c.link || (c._embedded?.up?.[0]?.link ?? '');
+              try {
+                const u = new URL(href);
+                const path = u.pathname.replace(/\/$/, '');
+                const slug = path.split('/').filter(Boolean).pop() || '';
+                href = slug ? `/${slug}/#comments` : '#';
+              } catch {}
+              a.href = href;
+              reply.appendChild(a);
+
+              right.appendChild(user);
+              right.appendChild(reply);
+
+              box.appendChild(left);
+              box.appendChild(right);
+
+              frag.appendChild(box);
+            });
+            const loading = recentSection.querySelector('[data-role="recent-loading"]');
+            if (loading) loading.remove();
+            // insert before the aside_info_card block if present
+            const infoCard = recentSection.querySelector('.aside_info_card');
+            if (infoCard && infoCard.parentNode === recentSection) {
+              recentSection.insertBefore(frag, infoCard);
+            } else {
+              recentSection.appendChild(frag);
+            }
+          })
+          .catch(() => {
+            const loading = recentSection.querySelector('[data-role="recent-loading"]');
+            if (loading) loading.innerHTML = '<div style="text-align:center; padding: 1rem; color: var(--B);">最新评论加载失败</div>';
+          });
+      }
+      return;
+    }
 
     wpUrl = commentsDiv.getAttribute('data-wp-url');
     postId = commentsDiv.getAttribute('data-post-id');

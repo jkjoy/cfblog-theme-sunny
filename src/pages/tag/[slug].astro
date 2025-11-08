@@ -68,6 +68,8 @@ function extractImages(html: string): string[] {
             const imgs = extractImages(p.content.rendered || '');
             const imageCount = imgs.length;
             const maxImages = Math.min(imageCount, 9);
+            const tagsTerms = (p._embedded?.['wp:term'] || []).flat?.() || [];
+            const tags = tagsTerms.filter((t: any) => t.taxonomy === 'post_tag');
             return (
               <div class="postlist cat_block" style={`animation-delay: ${200 * idx}ms;`}>
                 <div class="top">
@@ -115,6 +117,9 @@ function extractImages(html: string): string[] {
                     <a href={`/${p.slug}/#comments`}>
                       <span class="pinglun">评论</span>
                     </a>
+                    {tags.map((t: any) => (
+                      <a href={`/tag/${t.slug}/`}>{t.name}</a>
+                    ))}
                   </div>
                 </div>
               </div>

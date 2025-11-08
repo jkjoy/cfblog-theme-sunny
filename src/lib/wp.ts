@@ -137,10 +137,21 @@ export type WPTag = {
 };
 
 export async function fetchTags(limit = 20): Promise<WPTag[]> {
-  if (!wpUrl) throw new Error('PUBLIC_WP_URL is not set');
-  const res = await fetch(`${wpUrl}/wp-json/wp/v2/tags?per_page=${limit}&orderby=count&order=desc`);
-  if (!res.ok) throw new Error(`WP tags fetch failed: ${res.status}`);
-  return res.json();
+  if (!wpUrl) {
+    console.warn('WP tags fetch skipped: PUBLIC_WP_URL is not set');
+    return [];
+  }
+  try {
+    const res = await fetch(`${wpUrl}/wp-json/wp/v2/tags?per_page=${limit}&orderby=count&order=desc`);
+    if (!res.ok) {
+      console.warn(`WP tags fetch failed: ${res.status}`);
+      return [];
+    }
+    return await res.json();
+  } catch (err) {
+    console.warn('WP tags fetch error:', err);
+    return [];
+  }
 }
 
 export type WPComment = {
