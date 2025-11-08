@@ -4,6 +4,17 @@ import Menu from "../../components/Menu.astro";
 import Sidebar from "../../components/Sidebar.astro";
 import { fetchPostsPage, fetchUserById, fetchSiteInfo, fetchCommentCounts } from "../../lib/wp";
 
+export async function getStaticPaths() {
+  const perPage = 10;
+  try {
+    const { totalPages } = await fetchPostsPage(1, perPage);
+    const pages = Math.max(1, Number(totalPages) || 1);
+    return Array.from({ length: pages }, (_, i) => ({ params: { page: String(i + 1) } }));
+  } catch {
+    return [{ params: { page: '1' } }];
+  }
+}
+
 const page = Number(Astro.params.page || '1');
 const perPage = 10;
 const { items: posts, totalPages } = await fetchPostsPage(page, perPage);
@@ -115,4 +126,3 @@ function isNew(dateStr: string): boolean { const created = new Date(dateStr).get
     {page < totalPages && <a class="next" href={`/page/${page+1}`}>more</a>}
   </div>
 </BaseLayout>
-
