@@ -97,9 +97,12 @@ $('body').on('click','.cat_archive_next .next',function() {
     $this.addClass('loading').text("loading"); 
     var href = $this.attr('href');
     if (href != undefined) {
+        var reqUrl = href;
+        try { reqUrl = new URL(href, window.location.href).href; } catch (e) {}
         $.ajax({
-            url: href,
+            url: reqUrl,
             type: 'get',
+            cache: false,
             error: function(request) {
             },
             success: function(data) {
@@ -108,6 +111,15 @@ $('body').on('click','.cat_archive_next .next',function() {
                 var $res = $(data).find('.postlist');
                 $('.postlist_out').append($res.fadeIn(500));
                 var newhref = $(data).find('.cat_archive_next .next').attr('href');
+                if (!newhref) {
+                    // fallback: increment current page param
+                    try {
+                        var u = new URL(href, window.location.href);
+                        var curr = parseInt(u.searchParams.get('page') || '1', 10);
+                        u.searchParams.set('page', String(curr + 1));
+                        newhref = u.pathname + u.search;
+                    } catch (e) {}
+                }
                 if (newhref != undefined) {
                     $('.cat_archive_next .next').attr('href', newhref);
                 } else {
