@@ -441,14 +441,28 @@
           const reply = document.createElement('div'); reply.className = 'reply';
           const a = document.createElement('a'); a.className = 'recent-comment-item';
           a.innerHTML = (c.content && c.content.rendered) || '';
-          var href = c.link || (c._embedded && c._embedded.up && c._embedded.up[0] && c._embedded.up[0].link) || '';
-          try {
-            var u = new URL(href);
-            var path = u.pathname.replace(/\/$/, '');
-            var slug = path.split('/').filter(Boolean).pop() || '';
-            href = slug ? `/${slug}/#comments` : '#';
-          } catch (e) {}
-          a.href = href;
+          a.href = '#';
+
+          // Prefer resolving via post id to get accurate slug
+          function setHrefFromLinkFallback() {
+            var href = c.link || (c._embedded && c._embedded.up && c._embedded.up[0] && c._embedded.up[0].link) || '';
+            try {
+              var u = new URL(href);
+              var path = u.pathname.replace(/\/$/, '');
+              var slug = path.split('/').filter(Boolean).pop() || '';
+              a.href = slug ? `/${slug}/#comments` : '#';
+            } catch (e) { a.href = '#'; }
+          }
+
+          if (typeof c.post === 'number' && c.post > 0) {
+            fetch(`${wp}/wp-json/wp/v2/posts/${c.post}?_fields=slug`)
+              .then(function(r){ return r.ok ? r.json() : null; })
+              .then(function(p){ if (p && p.slug) { a.href = `/${p.slug}/#comments`; } else { setHrefFromLinkFallback(); } })
+              .catch(function(){ setHrefFromLinkFallback(); });
+          } else {
+            setHrefFromLinkFallback();
+          }
+
           reply.appendChild(a);
 
           right.appendChild(user);

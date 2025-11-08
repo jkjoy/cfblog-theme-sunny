@@ -3,8 +3,7 @@ import BaseLayout from "../layouts/BaseLayout.astro";
 import Menu from "../components/Menu.astro";
 import Sidebar from "../components/Sidebar.astro";
 import Comments from "../components/Comments.astro";
-import { fetchUserById } from "../lib/wp";
-import { fetchPosts, fetchPost } from "../lib/wp";
+import { fetchUserById, fetchAllPosts, fetchPost } from "../lib/wp";
 // Simple Markdown to HTML converter (headings, lists, links, images, code)
 function escapeHtml(str: string): string {
   return str
@@ -40,7 +39,7 @@ function mdToHtml(md: string): string {
     const items = match.split('\n').map(l => l.replace(/^\d+\. /, '').trim());
     return `<ol>${items.map(it => `<li>${it}</li>`).join('')}</ol>`;
   });
-  // images
+  // images (Markdown syntax only)
   out = out.replace(/!\[([^\]]*)\]\(([^\)]+)\)/g, '<img alt="$1" src="$2" />');
   // links
   out = out.replace(/\[([^\]]+)\]\(([^\)]+)\)/g, '<a href="$2">$1</a>');
@@ -60,7 +59,8 @@ function normalizeCodeBlocks(html: string): string {
 }
 
 export async function getStaticPaths() {
-  const posts = await fetchPosts();
+  // Generate more paths to reduce 404 during SSG
+  const posts = await fetchAllPosts(50, 100);
   return posts.map(p => ({ params: { slug: p.slug } }));
 }
 
@@ -101,6 +101,42 @@ const adminAvatar = withAvatarMirror(admin.avatar_urls?.['96'] || admin.avatar_u
 const rawHtml = post.content?.rendered || '';
 const looksLikeMd = rawHtml && !rawHtml.trim().startsWith('<');
 const postHtml = normalizeCodeBlocks(looksLikeMd ? mdToHtml(rawHtml) : rawHtml);
+
+// Enhance article images with lazyload + fancybox
+function enhanceArticleImages(html: string): string {
+  if (!html) return html;
+  const imgTagRegex = /<img\b[^>]*>/gi;
+  const getAttr = (tag: string, name: string): string | null => {
+    const dq = new RegExp(name + '\\s*=\\s*"([^"]*)"', 'i');
+    const sq = new RegExp(name + "\\s*=\\s*'([^']*)'", 'i');
+    const m = dq.exec(tag) || sq.exec(tag);
+    if (!m) return null;
+    const val = (m[1] || '').trim();
+    return val || null;
+  };
+  const allowedExt = /\.(?:png|jpe?g|gif|webp|svg|bmp|ico|avif|tiff?)(?:\?.*)?(?:#.*)?$/i;
+  const dataImage = /^data:image\//i;
+  return html.replace(imgTagRegex, function(tag) {
+    let url = getAttr(tag, 'data-src') || getAttr(tag, 'data-original') || getAttr(tag, 'data-lazy-src') || getAttr(tag, 'src');
+    if (!url) {
+      const srcset = getAttr(tag, 'srcset');
+      if (srcset) {
+        const first = srcset.split(',')[0].trim().split(/\s+/)[0];
+        url = first || null;
+      }
+    }
+    if (!url) return tag;
+    if (url.startsWith('//')) url = 'https:' + url;
+    const valid = allowedExt.test(url) || dataImage.test(url);
+    if (!valid) return tag;
+    const alt = getAttr(tag, 'alt') || '';
+    const cls = (getAttr(tag, 'class') || '').trim();
+    const newImg = `<img class="${cls ? cls + ' ' : ''}lazyload" src="/style/lazy.png" data-src="${url}" alt="${alt}" />`;
+    return `<span data-fancybox="article" class="postlist_gallery" href="${url}">${newImg}</span>`;
+  });
+}
+const enhancedHtml = enhanceArticleImages(postHtml);
+
 const modifiedStr = (post as any).modified || post.date;
 const modifiedTs = new Date(modifiedStr).getTime();
 const expiredDays = Math.floor((Date.now() - modifiedTs) / (24 * 60 * 60 * 1000));
@@ -155,7 +191,7 @@ const titleText = decodeEntities(stripTags(post.title?.rendered || ''));
               ⚠️ 本文最后更新于{new Date(modifiedStr).toLocaleDateString('zh-CN')}，已经过了{expiredDays}天没有更新，若内容或图片失效，请留言反馈
             </div>
           )}
-          <div class="post_content" itemprop="articleBody" set:html={postHtml}></div>
+          <div class="post_content" itemprop="articleBody" set:html={enhancedHtml}></div>
           <div class="article_end">
             <span>By {adminName}</span>
             <span>On <time datetime={new Date(post.date).toISOString()} itemprop="datePublished">{new Date(post.date).toLocaleDateString('zh-CN')}</time></span>

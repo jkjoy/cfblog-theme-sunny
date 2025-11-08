@@ -46,37 +46,19 @@ function isNew(dateStr: string): boolean {
 function extractImages(html: string): string[] {
   const urls: string[] = [];
   if (!html) return urls;
-  const imgTagRegex = /<img\b[^>]*>/gi;
-  const attrRegex = (name: string) => new RegExp(`${name}\s*=\s*([\"'])(.*?)\1`, 'i');
-  const allowedExt = /\.(?:png|jpe?g|gif|webp|svg|bmp|ico|avif|tiff?)(?:\?.*)?(?:#.*)?$/i;
-  const dataImage = /^data:image\//i;
   const seen = new Set<string>();
+  const push = (u: string) => {
+    if (u.startsWith('//')) u = 'https:' + u;
+    if (!seen.has(u)) { seen.add(u); urls.push(u); }
+  };
+  const exts = '(?:png|jpe?g|gif|webp|svg|bmp|ico|avif|tiff?)';
+  const reAbs = new RegExp(`https?:\\/\\/[^\s"'<>]+?\\.${exts}(?:\\?[^\s"'<>]*)?(?:#[^\s"'<>]*)?`, 'gi');
+  const reProt = new RegExp(`(?:^|[^\\w])(\\/\\/[^\s"'<>]+?\\.${exts}(?:\\?[^\s"'<>]*)?(?:#[^\s"'<>]*)?)`, 'gi');
+  const reRoot = new RegExp(`(?:^|[^\\w])(\\/[^"'<>\s]+?\\.${exts}(?:\\?[^\s"'<>]*)?(?:#[^\s"'<>]*)?)`, 'gi');
   let m: RegExpExecArray | null;
-  while ((m = imgTagRegex.exec(html)) && urls.length < 20) {
-    const tag = m[0];
-    const tryGet = (name: string): string | null => {
-      const a = attrRegex(name).exec(tag);
-      if (!a) return null;
-      const val = (a[2] || '').trim();
-      return val || null;
-    };
-    let u = tryGet('data-src') || tryGet('data-original') || tryGet('data-lazy-src') || tryGet('src') || null;
-    if (!u) {
-      const srcset = tryGet('srcset');
-      if (srcset) {
-        const first = srcset.split(',')[0].trim().split(/\s+/)[0];
-        u = first || null;
-      }
-    }
-    if (!u) continue;
-    if (u.startsWith('//')) {
-      u = 'https:' + u;
-    }
-    if (!allowedExt.test(u) && !dataImage.test(u)) continue;
-    if (seen.has(u)) continue;
-    seen.add(u);
-    urls.push(u);
-  }
+  while ((m = reAbs.exec(html)) && urls.length < 20) push(m[0]);
+  while ((m = reProt.exec(html)) && urls.length < 20) push(m[1]);
+  while ((m = reRoot.exec(html)) && urls.length < 20) push(m[1]);
   return urls;
 }
 ---

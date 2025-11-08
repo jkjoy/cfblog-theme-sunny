@@ -44,18 +44,34 @@ export type WPCategory = {
 const wpUrl = import.meta.env.PUBLIC_WP_URL?.replace(/\/$/, '') || '';
 
 export async function fetchPostsPage(page = 1, perPage = 10, extraParams?: Record<string, string | number>): Promise<WPPostsResponse> {
-  if (!wpUrl) throw new Error('PUBLIC_WP_URL is not set');
+  if (!wpUrl) {
+    console.warn('fetchPostsPage: PUBLIC_WP_URL is not set; returning empty list');
+    return { items: [], totalPages: 1, total: 0 };
+  }
   const qp = new URLSearchParams({ per_page: String(perPage), page: String(page) });
   if (extraParams) {
     for (const [k, v] of Object.entries(extraParams)) qp.set(k, String(v));
   }
   qp.set('_embed', '');
-  const res = await fetch(`${wpUrl}/wp-json/wp/v2/posts?${qp.toString()}`);
-  if (!res.ok) throw new Error(`WP posts fetch failed: ${res.status}`);
-  const items: WPPost[] = await res.json();
-  const totalPages = Number(res.headers.get('X-WP-TotalPages') || '1');
-  const total = Number(res.headers.get('X-WP-Total') || String(items.length));
-  return { items, totalPages, total };
+  try {
+    const res = await fetch(`${wpUrl}/wp-json/wp/v2/posts?${qp.toString()}`);
+    if (!res.ok) {
+      console.warn(`fetchPostsPage: request failed ${res.status}; returning empty list`);
+      return { items: [], totalPages: 1, total: 0 };
+    }
+    const ct = (res.headers.get('content-type') || '').toLowerCase();
+    if (!ct.includes('application/json')) {
+      console.warn(`fetchPostsPage: unexpected content-type ${ct}; returning empty list`);
+      return { items: [], totalPages: 1, total: 0 };
+    }
+    const items: WPPost[] = await res.json();
+    const totalPages = Number(res.headers.get('X-WP-TotalPages') || '1');
+    const total = Number(res.headers.get('X-WP-Total') || String(items.length));
+    return { items, totalPages, total };
+  } catch (err) {
+    console.warn('fetchPostsPage: error fetching posts; returning empty list', err);
+    return { items: [], totalPages: 1, total: 0 };
+  }
 }
 
 export async function fetchPosts(): Promise<WPPost[]> {
@@ -83,40 +99,98 @@ export async function fetchAllPosts(maxPages = 50, perPage = 100): Promise<WPPos
 }
 
 export async function fetchSiteInfo(): Promise<WPSiteInfo> {
-  if (!wpUrl) throw new Error('PUBLIC_WP_URL is not set');
-  const res = await fetch(`${wpUrl}/wp-json/`);
-  if (!res.ok) throw new Error(`WP site info fetch failed: ${res.status}`);
-  const root = await res.json();
-  return { name: root.name, description: root.description };
+  // Be resilient during build: fall back to defaults instead of throwing
+  if (!wpUrl) {
+    console.warn('fetchSiteInfo: PUBLIC_WP_URL is not set; using defaults');
+    return { name: 'Sunny Astro', description: 'Astro + WordPress' };
+  }
+  try {
+    const res = await fetch(`${wpUrl}/wp-json/`);
+    if (!res.ok) {
+      console.warn(`fetchSiteInfo: request failed ${res.status}; using defaults`);
+      return { name: 'Sunny Astro', description: 'Astro + WordPress' };
+    }
+    const ct = (res.headers.get('content-type') || '').toLowerCase();
+    if (!ct.includes('application/json')) {
+      console.warn(`fetchSiteInfo: unexpected content-type ${ct}; using defaults`);
+      return { name: 'Sunny Astro', description: 'Astro + WordPress' };
+    }
+    const root = await res.json();
+    return { name: root.name, description: root.description };
+  } catch (err) {
+    console.warn('fetchSiteInfo: error fetching site info; using defaults', err);
+    return { name: 'Sunny Astro', description: 'Astro + WordPress' };
+  }
 }
 
 export async function fetchSettings(): Promise<WPSettings> {
-  if (!wpUrl) throw new Error('PUBLIC_WP_URL is not set');
+  if (!wpUrl) {
+    console.warn('fetchSettings: PUBLIC_WP_URL is not set; using defaults');
+    return { title: '', description: '' };
+  }
   try {
     const res = await fetch(`${wpUrl}/wp-json/wp/v2/settings`);
     if (!res.ok) {
-      console.warn(`WP settings fetch failed: ${res.status}, using defaults`);
+      console.warn(`fetchSettings: request failed ${res.status}; using defaults`);
+      return { title: '', description: '' };
+    }
+    const ct = (res.headers.get('content-type') || '').toLowerCase();
+    if (!ct.includes('application/json')) {
+      console.warn(`fetchSettings: unexpected content-type ${ct}; using defaults`);
       return { title: '', description: '' };
     }
     return res.json();
   } catch (error) {
-    console.warn('WP settings fetch error:', error);
+    console.warn('fetchSettings: error', error);
     return { title: '', description: '' };
   }
 }
 
 export async function fetchUserById(id: number): Promise<WPUser> {
-  if (!wpUrl) throw new Error('PUBLIC_WP_URL is not set');
-  const res = await fetch(`${wpUrl}/wp-json/wp/v2/users/${id}`);
-  if (!res.ok) throw new Error(`WP user fetch failed: ${res.status}`);
-  return res.json();
+  const fallback: WPUser = { id, name: 'Admin', slug: 'admin', avatar_urls: {} };
+  if (!wpUrl) {
+    console.warn('fetchUserById: PUBLIC_WP_URL is not set; using fallback user');
+    return fallback;
+  }
+  try {
+    const res = await fetch(`${wpUrl}/wp-json/wp/v2/users/${id}`);
+    if (!res.ok) {
+      console.warn(`fetchUserById: request failed ${res.status}; using fallback user`);
+      return fallback;
+    }
+    const ct = (res.headers.get('content-type') || '').toLowerCase();
+    if (!ct.includes('application/json')) {
+      console.warn(`fetchUserById: unexpected content-type ${ct}; using fallback user`);
+      return fallback;
+    }
+    return await res.json();
+  } catch (err) {
+    console.warn('fetchUserById: error', err);
+    return fallback;
+  }
 }
 
 export async function fetchCategories(): Promise<WPCategory[]> {
-  if (!wpUrl) throw new Error('PUBLIC_WP_URL is not set');
-  const res = await fetch(`${wpUrl}/wp-json/wp/v2/categories?per_page=100`);
-  if (!res.ok) throw new Error(`WP categories fetch failed: ${res.status}`);
-  return res.json();
+  if (!wpUrl) {
+    console.warn('fetchCategories: PUBLIC_WP_URL is not set; returning empty list');
+    return [];
+  }
+  try {
+    const res = await fetch(`${wpUrl}/wp-json/wp/v2/categories?per_page=100`);
+    if (!res.ok) {
+      console.warn(`fetchCategories: request failed ${res.status}; returning empty list`);
+      return [];
+    }
+    const ct = (res.headers.get('content-type') || '').toLowerCase();
+    if (!ct.includes('application/json')) {
+      console.warn(`fetchCategories: unexpected content-type ${ct}; returning empty list`);
+      return [];
+    }
+    return await res.json();
+  } catch (err) {
+    console.warn('fetchCategories: error', err);
+    return [];
+  }
 }
 
 export async function fetchPostsByCategory(categoryId: number, page = 1, perPage = 10): Promise<WPPostsResponse> {
@@ -185,11 +259,18 @@ export async function fetchCommentsByPost(postId: number): Promise<WPComment[]> 
 
 // Fetch total comment count for a given post via X-WP-Total header
 export async function fetchCommentCount(postId: number): Promise<number> {
-  if (!wpUrl) throw new Error('PUBLIC_WP_URL is not set');
-  const res = await fetch(`${wpUrl}/wp-json/wp/v2/comments?post=${postId}&per_page=1`);
-  if (!res.ok) return 0;
-  const total = Number(res.headers.get('X-WP-Total') || '0');
-  return Number.isFinite(total) ? total : 0;
+  if (!wpUrl) {
+    console.warn('fetchCommentCount: PUBLIC_WP_URL is not set; returning 0');
+    return 0;
+  }
+  try {
+    const res = await fetch(`${wpUrl}/wp-json/wp/v2/comments?post=${postId}&per_page=1`);
+    if (!res.ok) return 0;
+    const total = Number(res.headers.get('X-WP-Total') || '0');
+    return Number.isFinite(total) ? total : 0;
+  } catch {
+    return 0;
+  }
 }
 
 // Batch fetch comment counts for multiple posts
@@ -249,45 +330,125 @@ export type WPPage = {
 };
 
 export async function fetchPages(limit = 100): Promise<WPPage[]> {
-  if (!wpUrl) throw new Error('PUBLIC_WP_URL is not set');
-  // include fields for sorting (menu_order) and status
-  const res = await fetch(`${wpUrl}/wp-json/wp/v2/pages?per_page=${limit}&_embed&orderby=menu_order&order=asc`);
-  if (!res.ok) throw new Error(`WP pages fetch failed: ${res.status}`);
-  const arr: WPPage[] = await res.json();
-  // sort as a fallback by menu_order then date
-  return arr.sort((a, b) => (a.menu_order ?? 0) - (b.menu_order ?? 0) || new Date(a.date).getTime() - new Date(b.date).getTime());
+  if (!wpUrl) {
+    console.warn('fetchPages: PUBLIC_WP_URL is not set; returning empty list');
+    return [];
+  }
+  try {
+    // include fields for sorting (menu_order) and status
+    const res = await fetch(`${wpUrl}/wp-json/wp/v2/pages?per_page=${limit}&_embed&orderby=menu_order&order=asc`);
+    if (!res.ok) {
+      console.warn(`fetchPages: request failed ${res.status}; returning empty list`);
+      return [];
+    }
+    const ct = (res.headers.get('content-type') || '').toLowerCase();
+    if (!ct.includes('application/json')) {
+      console.warn(`fetchPages: unexpected content-type ${ct}; returning empty list`);
+      return [];
+    }
+    const arr: WPPage[] = await res.json();
+    // sort as a fallback by menu_order then date
+    return arr.sort((a, b) => (a.menu_order ?? 0) - (b.menu_order ?? 0) || new Date(a.date).getTime() - new Date(b.date).getTime());
+  } catch (err) {
+    console.warn('fetchPages: error fetching pages; returning empty list', err);
+    return [];
+  }
 }
 
 export async function fetchPageBySlug(slug: string): Promise<WPPage | null> {
-  if (!wpUrl) throw new Error('PUBLIC_WP_URL is not set');
-  const res = await fetch(`${wpUrl}/wp-json/wp/v2/pages?slug=${encodeURIComponent(slug)}&_embed`);
-  if (!res.ok) throw new Error(`WP page fetch failed: ${res.status}`);
-  const arr: WPPage[] = await res.json();
-  return arr[0] ?? null;
+  if (!wpUrl) {
+    console.warn('fetchPageBySlug: PUBLIC_WP_URL is not set; returning null');
+    return null;
+  }
+  try {
+    const res = await fetch(`${wpUrl}/wp-json/wp/v2/pages?slug=${encodeURIComponent(slug)}&_embed`);
+    if (!res.ok) {
+      console.warn(`fetchPageBySlug: request failed ${res.status}; returning null`);
+      return null;
+    }
+    const ct = (res.headers.get('content-type') || '').toLowerCase();
+    if (!ct.includes('application/json')) {
+      console.warn(`fetchPageBySlug: unexpected content-type ${ct}; returning null`);
+      return null;
+    }
+    const arr: WPPage[] = await res.json();
+    return arr[0] ?? null;
+  } catch (err) {
+    console.warn('fetchPageBySlug: error', err);
+    return null;
+  }
 }
 
 export async function fetchStickyPosts(limit = 5): Promise<WPPost[]> {
-  if (!wpUrl) throw new Error('PUBLIC_WP_URL is not set');
-  const res = await fetch(`${wpUrl}/wp-json/wp/v2/posts?sticky=true&per_page=${limit}&_embed`);
-  if (!res.ok) throw new Error(`WP sticky posts fetch failed: ${res.status}`);
-  return res.json();
+  if (!wpUrl) {
+    console.warn('fetchStickyPosts: PUBLIC_WP_URL is not set; returning empty list');
+    return [];
+  }
+  try {
+    const res = await fetch(`${wpUrl}/wp-json/wp/v2/posts?sticky=true&per_page=${limit}&_embed`);
+    if (!res.ok) {
+      console.warn(`fetchStickyPosts: request failed ${res.status}; returning empty list`);
+      return [];
+    }
+    const ct = (res.headers.get('content-type') || '').toLowerCase();
+    if (!ct.includes('application/json')) {
+      console.warn(`fetchStickyPosts: unexpected content-type ${ct}; returning empty list`);
+      return [];
+    }
+    return res.json();
+  } catch (err) {
+    console.warn('fetchStickyPosts: error', err);
+    return [];
+  }
 }
 
 export async function fetchPostsByIds(ids: number[]): Promise<WPPost[]> {
-  if (!wpUrl) throw new Error('PUBLIC_WP_URL is not set');
+  if (!wpUrl) {
+    console.warn('fetchPostsByIds: PUBLIC_WP_URL is not set; returning empty list');
+    return [];
+  }
   if (!ids.length) return [];
-  const res = await fetch(`${wpUrl}/wp-json/wp/v2/posts?include=${ids.join(',')}&per_page=${ids.length}&_embed`);
-  if (!res.ok) throw new Error(`WP posts by ids fetch failed: ${res.status}`);
-  const arr: WPPost[] = await res.json();
+  try {
+    const res = await fetch(`${wpUrl}/wp-json/wp/v2/posts?include=${ids.join(',')}&per_page=${ids.length}&_embed`);
+    if (!res.ok) {
+      console.warn(`fetchPostsByIds: request failed ${res.status}; returning empty list`);
+      return [];
+    }
+    const ct = (res.headers.get('content-type') || '').toLowerCase();
+    if (!ct.includes('application/json')) {
+      console.warn(`fetchPostsByIds: unexpected content-type ${ct}; returning empty list`);
+      return [];
+    }
+    const arr: WPPost[] = await res.json();
   // reorder according to ids
   const map = new Map(arr.map(p => [p.id, p] as const));
   return ids.map(id => map.get(id)).filter(Boolean) as WPPost[];
+  } catch (err) {
+    console.warn('fetchPostsByIds: error', err);
+    return [];
+  }
 }
 
 export async function fetchPost(slug: string): Promise<WPPost | null> {
-  if (!wpUrl) throw new Error('PUBLIC_WP_URL is not set');
-  const res = await fetch(`${wpUrl}/wp-json/wp/v2/posts?slug=${encodeURIComponent(slug)}&_embed`);
-  if (!res.ok) throw new Error(`WP post fetch failed: ${res.status}`);
-  const arr = await res.json();
-  return arr[0] ?? null;
+  if (!wpUrl) {
+    console.warn('fetchPost: PUBLIC_WP_URL is not set; returning null');
+    return null;
+  }
+  try {
+    const res = await fetch(`${wpUrl}/wp-json/wp/v2/posts?slug=${encodeURIComponent(slug)}&_embed`);
+    if (!res.ok) {
+      console.warn(`fetchPost: request failed ${res.status}; returning null`);
+      return null;
+    }
+    const ct = (res.headers.get('content-type') || '').toLowerCase();
+    if (!ct.includes('application/json')) {
+      console.warn(`fetchPost: unexpected content-type ${ct}; returning null`);
+      return null;
+    }
+    const arr = await res.json();
+    return arr[0] ?? null;
+  } catch (err) {
+    console.warn('fetchPost: error', err);
+    return null;
+  }
 }
