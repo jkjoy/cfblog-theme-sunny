@@ -77,10 +77,11 @@ var isLoading = false;
 $(window).on('scroll touchmove', function() {
     var A = Math.floor($(window).scrollTop()) + window.innerHeight;
     var B = $(document).height();
-    if(!isLoading && Math.abs(A - B) < 50  && $('.cat_archive_next').find('a.next').length > 0) {
+    var $next = $('.cat_archive_next').find('a.next');
+    if(!isLoading && Math.abs(A - B) < 50  && $next.length > 0) {
         isLoading = true;
         setTimeout(function() {
-            $('.cat_archive_next a.next').trigger('click');
+            $next.trigger('click');
         }, 300);
     }
 });
