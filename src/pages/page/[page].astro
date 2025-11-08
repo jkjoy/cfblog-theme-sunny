@@ -123,6 +123,6 @@ function isNew(dateStr: string): boolean { const created = new Date(dateStr).get
   </div>
 
   <div class="cat_archive_next">
-    {page < totalPages && <a class="next" href={`/page/${page+1}`}>more</a>}
+    {page < totalPages && <a class="next" href={`/page/${page+1}/`}>more</a>}
   </div>
 </BaseLayout>
