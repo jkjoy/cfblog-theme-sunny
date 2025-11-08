@@ -72,27 +72,21 @@ $(window).scroll(function() {
 });
 
 /* 加载更多文章 */
-$(function () {
-    if ($('.cat_archive_next a.next').length > 0) {
-        var link = $('.cat_archive_next a.next').attr("href");
-        $(".cat_archive_next").html("<span class='next' href='" + link + "'>more</span>");
-    } else {
-        $(".cat_archive_next").html("<span class='over'>已全部加载</span>");
-    }
-});
+// 保留原始 <a class="next" href="...">，不要替换为 <span>，避免丢失 href 与默认行为
 var isLoading = false;
 $(window).on('scroll touchmove', function() {
     var A = Math.floor($(window).scrollTop()) + window.innerHeight;
     var B = $(document).height();
-    if(!isLoading && Math.abs(A - B) < 50  && $('.cat_archive_next').find('.next').length > 0) {
+    if(!isLoading && Math.abs(A - B) < 50  && $('.cat_archive_next').find('a.next').length > 0) {
         isLoading = true;
         setTimeout(function() {
-            $('.cat_archive_next .next').click();
+            $('.cat_archive_next a.next').trigger('click');
         }, 300);
     }
 });
 // 统一委托到 body，因 .cat_archive_next 不在 .main 内
-$('body').on('click','.cat_archive_next .next',function() {
+$('body').on('click','.cat_archive_next a.next',function(e) {
+    e.preventDefault();
     $this = $(this);
     $this.addClass('loading').text("loading"); 
     var href = $this.attr('href');
@@ -108,22 +102,24 @@ $('body').on('click','.cat_archive_next .next',function() {
             success: function(data) {
                 $this.removeClass('loading').text("more");
                 
-                var $res = $(data).find('.postlist');
+                var $html = $('<div></div>').append($.parseHTML(data));
+                var $res = $html.find('.postlist');
                 $('.postlist_out').append($res.fadeIn(500));
-                var newhref = $(data).find('.cat_archive_next .next').attr('href');
+                var newhref = $html.find('.cat_archive_next a.next').attr('href');
                 if (!newhref) {
                     // fallback: increment current page param
                     try {
-                        var u = new URL(href, window.location.href);
+                        var u = new URL(reqUrl, window.location.href);
                         var curr = parseInt(u.searchParams.get('page') || '1', 10);
                         u.searchParams.set('page', String(curr + 1));
                         newhref = u.pathname + u.search;
                     } catch (e) {}
                 }
-                if (newhref != undefined) {
-                    $('.cat_archive_next .next').attr('href', newhref);
+                var $next = $('.cat_archive_next a.next');
+                if (newhref) {
+                    $next.attr('href', newhref).removeClass('loading').text('more');
                 } else {
-                    $('.cat_archive_next .next').remove();
+                    $next.remove();
                     $('.cat_archive_next').append('<span class="over">已全部加载</span>');
                 }
                 // 兼容重新初始化懒加载/代码复制/评论等
