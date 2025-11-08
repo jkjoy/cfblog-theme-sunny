@@ -99,10 +99,13 @@ const bodyJs = jsList.filter((src) => !/instantpage\.js$/i.test(src));
             var next = doc.querySelector(CONTAINER);
             var curr = document.querySelector(CONTAINER);
             if (next && curr) { curr.replaceWith(next); }
-            // Also sync pagination block outside main_screen
-            var nextPag = doc.querySelector('.cat_archive_next');
-            var currPag = document.querySelector('.cat_archive_next');
-            if (nextPag && currPag) { currPag.replaceWith(nextPag); }
+              // Also sync pagination block outside main_screen. Remove if destination has none.
+              var nextPag = doc.querySelector('.cat_archive_next');
+              var currPag = document.querySelector('.cat_archive_next');
+              if (currPag) {
+                if (nextPag) { currPag.replaceWith(nextPag); }
+                else if (currPag.parentNode) { currPag.parentNode.removeChild(currPag); }
+              }
             var t = doc.querySelector('title'); if (t) document.title = t.textContent || document.title;
             if (replaceHistory) history.pushState({}, '', url);
             if (window.lazySizes && typeof window.lazySizes.init==='function') window.lazySizes.init();
