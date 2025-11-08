@@ -197,15 +197,21 @@
     }
 
     const commentTree = buildCommentTree(comments);
-    const ol = document.createElement('ol');
-    ol.className = 'comment-list';
 
-    commentTree.forEach(comment => {
-      ol.appendChild(renderComment(comment, 0));
+    // 每个父评论使用一个 cat_block 包裹
+    const frag = document.createDocumentFragment();
+    commentTree.forEach(function(root) {
+      const wrap = document.createElement('div');
+      wrap.className = 'cat_block';
+      const ol = document.createElement('ol');
+      ol.className = 'comment-list';
+      ol.appendChild(renderComment(root, 0));
+      wrap.appendChild(ol);
+      frag.appendChild(wrap);
     });
 
     container.innerHTML = '';
-    container.appendChild(ol);
+    container.appendChild(frag);
 
     // 绑定回复按钮事件
     bindReplyButtons();

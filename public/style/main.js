@@ -91,7 +91,8 @@ $(window).on('scroll touchmove', function() {
         }, 300);
     }
 });
-$('.main').on('click','.cat_archive_next .next',function() {
+// 统一委托到 body，因 .cat_archive_next 不在 .main 内
+$('body').on('click','.cat_archive_next .next',function() {
     $this = $(this);
     $this.addClass('loading').text("loading"); 
     var href = $this.attr('href');
@@ -113,13 +114,50 @@ $('.main').on('click','.cat_archive_next .next',function() {
                     $('.cat_archive_next .next').remove();
                     $('.cat_archive_next').append('<span class="over">已全部加载</span>');
                 }
-                pjax.refresh();
+                // 兼容重新初始化懒加载/代码复制/评论等
+                if (window.lazySizes && typeof window.lazySizes.init === 'function') {
+                    window.lazySizes.init();
+                }
+                if (window.initCodeCopy && typeof window.initCodeCopy === 'function') {
+                    window.initCodeCopy();
+                }
+                if (window.initComments && typeof window.initComments === 'function') {
+                    window.initComments();
+                }
                 isLoading = false;
             }
         });
     }
     return false;
 });
+
+// 使用 IntersectionObserver 自动无感加载（滚动兼容保留）
+if ('IntersectionObserver' in window) {
+    var io;
+    var observeMore = function() {
+        var $next = document.querySelector('.cat_archive_next .next');
+        if (!$next) return;
+        if (io) { io.disconnect(); }
+        io = new IntersectionObserver(function(entries){
+            entries.forEach(function(entry){
+                if (entry.isIntersecting && !isLoading) {
+                    isLoading = true;
+                    setTimeout(function(){
+                        $($next).trigger('click');
+                    }, 100);
+                }
+            });
+        }, { root: null, rootMargin: '100px', threshold: 0 });
+        io.observe($next);
+    };
+    // 初始与每次加载后尝试观察新的 next
+    observeMore();
+    $(document).on('DOMNodeInserted', function(e){
+        if ($(e.target).is('.cat_archive_next') || $(e.target).find('.cat_archive_next .next').length) {
+            observeMore();
+        }
+    });
+}
 
 /* 点击回复某人 */
 $('.main').on('click', '.cat_comment_reply', function () {
