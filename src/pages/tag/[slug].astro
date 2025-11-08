@@ -45,10 +45,37 @@ function isNew(dateStr: string): boolean {
 }
 function extractImages(html: string): string[] {
   const urls: string[] = [];
-  const regex = /<img[^>]+src=["']([^"']+)["'][^>]*>/gi;
+  if (!html) return urls;
+  const imgTagRegex = /<img\b[^>]*>/gi;
+  const attrRegex = (name: string) => new RegExp(`${name}\s*=\s*([\"'])(.*?)\1`, 'i');
+  const allowedExt = /\.(?:png|jpe?g|gif|webp|svg|bmp|ico|avif|tiff?)(?:\?.*)?(?:#.*)?$/i;
+  const dataImage = /^data:image\//i;
+  const seen = new Set<string>();
   let m: RegExpExecArray | null;
-  while ((m = regex.exec(html)) && urls.length < 20) {
-    urls.push(m[1]);
+  while ((m = imgTagRegex.exec(html)) && urls.length < 20) {
+    const tag = m[0];
+    const tryGet = (name: string): string | null => {
+      const a = attrRegex(name).exec(tag);
+      if (!a) return null;
+      const val = (a[2] || '').trim();
+      return val || null;
+    };
+    let u = tryGet('data-src') || tryGet('data-original') || tryGet('data-lazy-src') || tryGet('src') || null;
+    if (!u) {
+      const srcset = tryGet('srcset');
+      if (srcset) {
+        const first = srcset.split(',')[0].trim().split(/\s+/)[0];
+        u = first || null;
+      }
+    }
+    if (!u) continue;
+    if (u.startsWith('//')) {
+      u = 'https:' + u;
+    }
+    if (!allowedExt.test(u) && !dataImage.test(u)) continue;
+    if (seen.has(u)) continue;
+    seen.add(u);
+    urls.push(u);
   }
   return urls;
 }
