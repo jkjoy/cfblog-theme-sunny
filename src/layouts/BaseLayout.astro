@@ -94,27 +94,31 @@ const bodyJs = jsList.filter((src) => !/instantpage\.js$/i.test(src));
         function load(url, replaceHistory){
           fetch(url, { credentials:'same-origin' })
             .then(function(r){ return r.text(); })
-            .then(function(html){
-              var doc = new DOMParser().parseFromString(html, 'text/html');
-              var next = doc.querySelector(CONTAINER);
-              var curr = document.querySelector(CONTAINER);
-              if (next && curr) { curr.replaceWith(next); }
-              var t = doc.querySelector('title'); if (t) document.title = t.textContent || document.title;
-              if (replaceHistory) history.pushState({}, '', url);
-              if (window.lazySizes && typeof window.lazySizes.init==='function') window.lazySizes.init();
-              // 重新初始化代码复制功能
-              if (window.initCodeCopy && typeof window.initCodeCopy==='function') {
-                window.initCodeCopy();
-              }
-              // 重新初始化评论系统
-              if (window.initComments && typeof window.initComments==='function') {
-                window.initComments();
-              }
-              // 重新初始化无限加载（返回首页或含有分页时）
-              if (window.initLoadMore && typeof window.initLoadMore==='function') {
-                window.initLoadMore();
-              }
-            })
+          .then(function(html){
+            var doc = new DOMParser().parseFromString(html, 'text/html');
+            var next = doc.querySelector(CONTAINER);
+            var curr = document.querySelector(CONTAINER);
+            if (next && curr) { curr.replaceWith(next); }
+            // Also sync pagination block outside main_screen
+            var nextPag = doc.querySelector('.cat_archive_next');
+            var currPag = document.querySelector('.cat_archive_next');
+            if (nextPag && currPag) { currPag.replaceWith(nextPag); }
+            var t = doc.querySelector('title'); if (t) document.title = t.textContent || document.title;
+            if (replaceHistory) history.pushState({}, '', url);
+            if (window.lazySizes && typeof window.lazySizes.init==='function') window.lazySizes.init();
+            // 重新初始化代码复制功能
+            if (window.initCodeCopy && typeof window.initCodeCopy==='function') {
+              window.initCodeCopy();
+            }
+            // 重新初始化评论系统
+            if (window.initComments && typeof window.initComments==='function') {
+              window.initComments();
+            }
+            // 重新初始化无限加载（返回首页或含有分页时）
+            if (window.initLoadMore && typeof window.initLoadMore==='function') {
+              window.initLoadMore();
+            }
+          })
             .catch(function(){ location.href = url; });
         }
         document.addEventListener('click', function(e){
