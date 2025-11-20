@@ -92,6 +92,20 @@ function isNew(dateStr: string): boolean { const created = new Date(dateStr).get
                     <div class="postlist_abstract" set:html={p.excerpt.rendered}></div>
                   </div>
                 </div>
+                <div class="postlist_head">
+                  {adminAvatar && (
+                    <a href={`/${p.slug}/`}>
+                      <img class="avatar lazyload" src="/style/lazy.png" data-src={adminAvatar} alt={adminName} />
+                    </a>
+                  )}
+                  <div class="middle">
+                    <div class="top">{adminName}</div>
+                    <div class="bottom">
+                      <span>{formatDateTime(p.date)}</span>
+                      {isNew(p.date) && <span style="color:#ff000099;"> · NEW!</span>}
+                    </div>
+                  </div>
+                </div>
                 <div class="postlist_info">
                   <div class="postlist_title">
                     <a href={`/${p.slug}/#read_article`} set:html={p.title.rendered}></a>

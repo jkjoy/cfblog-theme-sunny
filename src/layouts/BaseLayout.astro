@@ -48,7 +48,7 @@ const bodyJs = jsList.filter((src) => !/instantpage\.js$/i.test(src));
           // Disable transitions during first paint to avoid flicker
           var st=d.createElement('style'); st.id='no-transitions'; st.textContent='*{transition:none!important}'; d.head.appendChild(st);
           // Apply dark class as early as possible based on SunnyLite cookie night=1
-          var m=(d.cookie||'').match(/(?:^|;\\\\\>*)night\s*=\s*(\d)/);
+          var m=(d.cookie||'').match(/(?:^|;\s*)night\s*=\s*(\d)/);
           if(m&&m[1]==='1'){ de.classList.add('darkmode'); }
           // Remove transition blocker after paint
           window.addEventListener('load',function(){ st.remove(); });
@@ -151,12 +151,28 @@ const bodyJs = jsList.filter((src) => !/instantpage\.js$/i.test(src));
           // 阻止分页链接使用 PJAX
           document.addEventListener('pjax:send', function(e) {
             var trigger = e.trigger;
-            if (trigger && trigger.classList && (
-              trigger.classList.contains('page-number') ||
-              trigger.classList.contains('page-nav')
+            if (trigger && (
+              trigger.hasAttribute('data-no-pjax') ||
+              (trigger.classList && (
+                trigger.classList.contains('page-number') ||
+                trigger.classList.contains('page-nav')
+              ))
             )) {
               e.preventDefault();
               return false;
+            }
+          });
+
+          // PJAX 完成后恢复黑夜模式状态
+          document.addEventListener('pjax:success', function() {
+            var de = document.documentElement;
+            var m = (document.cookie || '').match(/(?:^|;\\s*)night\\s*=\\s*(\\d)/);
+            if (m && m[1] === '1') {
+              if (!de.classList.contains('darkmode')) {
+                de.classList.add('darkmode');
+              }
+            } else {
+              de.classList.remove('darkmode');
             }
           });
         }

@@ -167,7 +167,7 @@ function renderPageNumbers(currentPage, totalPages) {
     if (currentPage > 1) {
         var prevPage = currentPage - 1;
         var prevUrl = generatePageUrl(prevPage, basePath);
-        paginationHTML += '<a href="' + prevUrl + '" class="page-nav prev">‹ 上一页</a>';
+        paginationHTML += '<a href="' + prevUrl + '" class="page-nav prev" data-no-pjax>‹ 上一页</a>';
     }
 
     // 页码
@@ -176,7 +176,7 @@ function renderPageNumbers(currentPage, totalPages) {
 
     // 第一页
     if (startPage > 1) {
-        paginationHTML += '<a href="' + generatePageUrl(1, basePath) + '" class="page-number">1</a>';
+        paginationHTML += '<a href="' + generatePageUrl(1, basePath) + '" class="page-number" data-no-pjax>1</a>';
         if (startPage > 2) {
             paginationHTML += '<span class="page-dots">...</span>';
         }
@@ -188,7 +188,7 @@ function renderPageNumbers(currentPage, totalPages) {
             paginationHTML += '<span class="page-number current">' + i + '</span>';
         } else {
             var pageUrl = generatePageUrl(i, basePath);
-            paginationHTML += '<a href="' + pageUrl + '" class="page-number">' + i + '</a>';
+            paginationHTML += '<a href="' + pageUrl + '" class="page-number" data-no-pjax>' + i + '</a>';
         }
     }
 
@@ -197,14 +197,14 @@ function renderPageNumbers(currentPage, totalPages) {
         if (endPage < totalPages - 1) {
             paginationHTML += '<span class="page-dots">...</span>';
         }
-        paginationHTML += '<a href="' + generatePageUrl(totalPages, basePath) + '" class="page-number">' + totalPages + '</a>';
+        paginationHTML += '<a href="' + generatePageUrl(totalPages, basePath) + '" class="page-number" data-no-pjax>' + totalPages + '</a>';
     }
 
     // 下一页
     if (currentPage < totalPages) {
         var nextPage = currentPage + 1;
         var nextUrl = generatePageUrl(nextPage, basePath);
-        paginationHTML += '<a href="' + nextUrl + '" class="page-nav next">下一页 ›</a>';
+        paginationHTML += '<a href="' + nextUrl + '" class="page-nav next" data-no-pjax>下一页 ›</a>';
     }
 
     paginationHTML += '</div>';
