@@ -44,15 +44,16 @@ const bodyJs = jsList.filter((src) => !/instantpage\.js$/i.test(src));
 
     <!-- 关键：在任何 CSS 之前立即执行，防止闪烁 -->
     <Fragment set:html={`<script>
-      !function(){
-        var isDark = /(?:^|;\\s*)night\\s*=\\s*1/.test(document.cookie);
-        console.log('[Theme] Cookie:', document.cookie);
+      (function(){
+        var c = document.cookie;
+        var isDark = c.indexOf('night=1') > -1;
+        console.log('[Theme] Cookie:', c);
         console.log('[Theme] Is dark mode:', isDark);
         if(isDark) {
-          document.documentElement.classList.add("darkmode");
+          document.documentElement.classList.add('darkmode');
           console.log('[Theme] Applied darkmode class');
         }
-      }();
+      })();
     </script>`} />
 
     <style>
