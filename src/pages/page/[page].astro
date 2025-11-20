@@ -131,7 +131,7 @@ function isNew(dateStr: string): boolean { const created = new Date(dateStr).get
     </div>
   </div>
 
-  <div class="cat_archive_next">
+  <div class="cat_archive_next" data-total-pages={totalPages} data-current-page={page}>
     {page < totalPages && <a class="next" href={`/page/${page+1}/`}>more</a>}
   </div>
 </BaseLayout>

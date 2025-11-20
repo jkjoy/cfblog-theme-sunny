@@ -1,0 +1,94 @@
+/* 页码分页导航样式 */
+.cat_pagination {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    margin: 1rem 0;
+    flex-wrap: wrap;
+}
+
+.cat_pagination .page-number,
+.cat_pagination .page-nav {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 2rem;
+    height: 2rem;
+    padding: 0 0.5rem;
+    color: var(--C);
+    background: var(--background);
+    border: 1px solid var(--A);
+    border-radius: 0.5rem;
+    font-size: 0.9rem;
+    text-decoration: none;
+    transition: all 0.2s ease;
+    cursor: pointer;
+    user-select: none;
+}
+
+.cat_pagination .page-number:hover,
+.cat_pagination .page-nav:hover {
+    background: var(--theme-60);
+    color: #fff;
+    border-color: var(--theme-60);
+    transform: translateY(-1px);
+}
+
+.cat_pagination .page-number.current {
+    background: var(--theme);
+    color: #fff;
+    border-color: var(--theme);
+    font-weight: bold;
+    cursor: default;
+}
+
+.cat_pagination .page-number.current:hover {
+    transform: none;
+}
+
+.cat_pagination .page-nav {
+    padding: 0 0.75rem;
+    letter-spacing: 1px;
+}
+
+.cat_pagination .page-nav.prev {
+    margin-right: 0.5rem;
+}
+
+.cat_pagination .page-nav.next {
+    margin-left: 0.5rem;
+}
+
+.cat_pagination .page-dots {
+    color: var(--B);
+    padding: 0 0.25rem;
+    font-size: 0.9rem;
+}
+
+/* 响应式分页 */
+@media (max-width: 768px) {
+    .cat_pagination {
+        gap: 0.25rem;
+    }
+
+    .cat_pagination .page-number,
+    .cat_pagination .page-nav {
+        min-width: 1.8rem;
+        height: 1.8rem;
+        font-size: 0.8rem;
+        padding: 0 0.4rem;
+    }
+
+    .cat_pagination .page-nav {
+        padding: 0 0.5rem;
+    }
+
+    .cat_pagination .page-nav.prev {
+        margin-right: 0.25rem;
+    }
+
+    .cat_pagination .page-nav.next {
+        margin-left: 0.25rem;
+    }
+}

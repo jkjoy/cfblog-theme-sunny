@@ -14,6 +14,7 @@ const pageTitle = title === siteName ? siteName : `${title} - ${siteName}`;
 const cssList = [
   '/style/fancybox.css',
   '/style/main.css',
+  '/style/pagination.css',
   '/style/article.css',
   '/style/code-macos.css',
 ];
@@ -47,98 +48,202 @@ const bodyJs = jsList.filter((src) => !/instantpage\.js$/i.test(src));
           // Disable transitions during first paint to avoid flicker
           var st=d.createElement('style'); st.id='no-transitions'; st.textContent='*{transition:none!important}'; d.head.appendChild(st);
           // Apply dark class as early as possible based on SunnyLite cookie night=1
-          var m=(d.cookie||'').match(/(?:^|;\s*)night\s*=\s*(\d)/);
-          var isDark = !!(m && m[1] === '1');
-          if (isDark) {
-            de.classList.add('darkmode');
-            // Preflight BG/text to prevent white flash before CSS loads
-            de.style.background='#0b0b0b';
-            de.style.color='#e5e7eb';
-          }
-          // Remove preflight styles after first frame
-          d.addEventListener('DOMContentLoaded', function(){
-            var el=d.getElementById('no-transitions'); if(el && el.parentNode){el.parentNode.removeChild(el);} 
-            de.style.background=''; de.style.color='';
-          });
-        } catch (e) {}
+          var m=(d.cookie||'').match(/(?:^|;\\\\\>*)night\s*=\s*(\d)/);
+          if(m&&m[1]==='1'){ de.classList.add('darkmode'); }
+          // Remove transition blocker after paint
+          window.addEventListener('load',function(){ st.remove(); });
+        }catch(e){}
       })();
     </script>
-    
+
+    <SEO >
     <title>{pageTitle}</title>
     <meta name="description" content={description} />
-    {cssList.map((href) => <link rel="stylesheet" href={href} />)}
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="sitemap" type="application/xml" title="Sitemap" href="/sitemap.xml" />
 
-    <!-- 自定义头部 HTML -->
-    {settings.head_html && <Fragment set:html={settings.head_html} />}
+    {cssList.map((href) => (
+      <link rel="stylesheet" href={href} />
+    ))}
+
+    {headJs.map((src) => (
+      <script type="module" src={src}></script>
+    ))}
+
+    <style define:vars={{ settings }} set:text={`
+      :root {
+        --theme: ${settings.theme_color || '#49b1f5'};
+        --theme-60: ${settings.theme_color || '#49b1f5'}99;
+        --theme-30: ${settings.theme_color || '#49b1f5'}4D;
+        --background: ${settings.background_color || '#ffffff'};
+        --background-1: ${settings.background_color || '#ffffff'};
+        --background-2: ${settings.background_color || '#ffffff'};
+        --background-3: ${settings.background_color || '#ffffff'};
+        --color: ${settings.text_color || '#4a4a4a'};
+        --colorC: ${settings.text_color || '#4a4a4a'}99;
+        --colorB: ${settings.text_color || '#4a4a4a'}4D;
+        --colorA: ${settings.text_color || '#4a4a4a'}1A;
+        --box-shadow: ${settings.box_shadow || '0 1px 3px rgba(0,0,0,0.08)'};
+        --code-bg: ${settings.code_bg || '#f8f8f8'};
+        --code-color: ${settings.code_color || '#525252'};
+        --margin: ${settings.margin || '1rem'};
+      }
+      html.darkmode {
+        --background: ${settings.dark_background || '#1a1a1a'};
+        --background-1: ${settings.dark_background_1 || '#1e1e1e'};
+        --background-2: ${settings.dark_background_2 || '#222222'};
+        --background-3: ${settings.dark_background_3 || '#252525'};
+        --color: ${settings.dark_text_color || '#e0e0e0'};
+        --colorC: ${settings.dark_text_color || '#e0e0e0'}99;
+        --colorB: ${settings.dark_text_color || '#e0e0e0'}4D;
+        --colorA: ${settings.dark_text_color || '#e0e0e0'}1A;
+        --box-shadow: ${settings.dark_box_shadow || '0 1px 3px rgba(0,0,0,0.3)'};
+        --code-bg: ${settings.dark_code_bg || '#2d2d2d'};
+        --code-color: ${settings.dark_code_color || '#f8f8f2'};
+      }
+    `}></style>
+
+    <!-- PJAX 配置：阻止分页链接使用 PJAX -->
+    <script define:vars={{ settings }} set:text={`
+      window.PJAX_CONFIG = {
+        timeout: 10000,
+        cacheBust: false,
+        selectors: ['title', '.main'],
+        switches: { '.main': 'append' },
+        analytics: true,
+        scrollRestoration: true,
+        requestOptions: {
+          headers: {
+            'X-PJAX': 'true',
+            'X-Requested-With': 'XMLHttpRequest'
+          }
+        }
+      };
+      // 阻止分页链接使用 PJAX（保留普通页面跳转）
+      window.PJAX_CONFIG.selectors.push('.cat_pagination a');
+    `}></script>
+
+    <!-- 自定义头部代码 -->
+    <Fragment set:html={settings.head_code || ''} />
+
+    <!-- PJAX 支持 -->
+    <script src="https://cdn.jsdelivr.net/npm/pjax@0.2.8/pjax.min.js"></script>
+
   </head>
   <body>
-    <div id="page" class="site">
-      <header id="masthead" class="site-header">
-        <div class="site-branding"></div>
-      </header>
+    <!-- 自定义顶部代码 -->
+    <Fragment set:html={settings.body_top_code || ''} />
 
-      <div id="content" class="site-content">
-        <main id="main" class="site-main">
-          <slot />
-        </main>
-      </div>
- 
-    </div>
-    {bodyJs.map((src) => <script src={src}></script>)}
-    <script>
-      (function(){
-        var CONTAINER = '.main_screen';
-        function isInternal(a){
-          try { var u=new URL(a.href, location.href); return u.origin===location.origin; } catch(e){ return false; }
+    <slot />
+
+    <!-- 自定义底部代码 -->
+    <Fragment set:html={settings.body_bottom_code || ''} />
+
+    {bodyJs.map((src) => (
+      <script is:inline src={src}></script>
+    ))}
+
+    <!-- PJAX 初始化：阻止分页链接使用 PJAX -->
+    <script is:inline set:text={`
+      document.addEventListener('DOMContentLoaded', function() {
+        if (typeof Pjax !== 'undefined') {
+          var pjax = new Pjax(window.PJAX_CONFIG);
+
+          // 阻止分页链接使用 PJAX
+          document.addEventListener('pjax:send', function(e) {
+            var trigger = e.trigger;
+            if (trigger && trigger.classList && (
+              trigger.classList.contains('page-number') ||
+              trigger.classList.contains('page-nav')
+            )) {
+              e.preventDefault();
+              return false;
+            }
+          });
         }
-        function load(url, replaceHistory){
-          fetch(url, { credentials:'same-origin' })
-            .then(function(r){ return r.text(); })
-          .then(function(html){
-            var doc = new DOMParser().parseFromString(html, 'text/html');
-            var next = doc.querySelector(CONTAINER);
-            var curr = document.querySelector(CONTAINER);
-            if (next && curr) { curr.replaceWith(next); }
-              // Also sync pagination block outside main_screen. Remove if destination has none.
-              var nextPag = doc.querySelector('.cat_archive_next');
-              var currPag = document.querySelector('.cat_archive_next');
-              if (currPag) {
-                if (nextPag) { currPag.replaceWith(nextPag); }
-                else if (currPag.parentNode) { currPag.parentNode.removeChild(currPag); }
-              }
-            var t = doc.querySelector('title'); if (t) document.title = t.textContent || document.title;
-            if (replaceHistory) history.pushState({}, '', url);
-            if (window.lazySizes && typeof window.lazySizes.init==='function') window.lazySizes.init();
-            // 重新初始化代码复制功能
-            if (window.initCodeCopy && typeof window.initCodeCopy==='function') {
-              window.initCodeCopy();
-            }
-            // 重新初始化评论系统
-            if (window.initComments && typeof window.initComments==='function') {
-              window.initComments();
-            }
-            // 重新初始化无限加载（返回首页或含有分页时）
-            if (window.initLoadMore && typeof window.initLoadMore==='function') {
-              window.initLoadMore();
-            }
-          })
-            .catch(function(){ location.href = url; });
-        }
-        document.addEventListener('click', function(e){
-          var a = e.target.closest && e.target.closest('a');
-          if (!a) return;
-          // Skip PJAX for 'more' pagination anchors to allow AJAX append
-          if (a.closest('.cat_archive_next')) return;
-          if (a.target==='_blank' || a.hasAttribute('download')) return;
-          if (!isInternal(a)) return;
-          var u = new URL(a.getAttribute('href'), location.href);
-          if (u.hash && u.pathname===location.pathname) return; // same-page anchor
-          e.preventDefault();
-          load(u.href, true);
-        }, true);
-        window.addEventListener('popstate', function(){ load(location.href, false); });
-      })();
-    </script>
+      });
+    `}></script>
+
   </body>
-  </html>
-    {headJs.map((src) => <script type="module" src={src}></script>)}
+</html>
+<style>
+/* 初始化样式 */
+.main_screen {
+  opacity: 0;
+  transition: opacity 0.4s ease;
+}
+.main_screen.loaded {
+  opacity: 1;
+}
+.loading_circle {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 2.5rem;
+  height: 2.5rem;
+  z-index: 9999;
+}
+.loading_circle svg {
+  width: 100%;
+  height: 100%;
+  color: var(--theme);
+  animation: spin 1s linear infinite;
+}
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+.percentage {
+  position: fixed;
+  bottom: 1rem;
+  right: 1rem;
+  background: var(--theme);
+  color: #fff;
+  border-radius: 50%;
+  width: 2.2rem;
+    height: 2.2rem;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    opacity: 0.8;
+    font-size: 0.75rem;
+    transition: opacity 0.2s;
+    z-index: 999;
+}
+.percentage:hover {
+    opacity: 1;
+}
+.darkmode .percentage {
+    background: var(--theme-60);
+}
+
+/* PJAX 加载动画 */
+.pjax-loading {
+  pointer-events: none;
+  opacity: 0.8;
+}
+
+/* 分页样式增强 */
+.cat_pagination {
+    margin: 2rem 0;
+}
+
+/* 隐藏原有的无限滚动提示 */
+.cat_archive_next .next {
+    display: none;
+}
+
+/* 显示页码分页 */
+.cat_archive_next:has(.cat_pagination) {
+    margin: 2rem 0;
+}
+
+@media (max-width: 768px) {
+    .percentage {
+        bottom: 4rem;
+        right: 0.5rem;
+    }
+}
+</style>

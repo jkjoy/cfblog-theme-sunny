@@ -111,7 +111,7 @@ function extractImages(html: string): string[] {
                         <span data-fancybox={`gallery${p.id}`} class="postlist_gallery" href={imgs[i]}>
                           <img class="lazyload postlist_img" src="/style/lazy.png" data-src={imgs[i]} alt={p.title.rendered.replace(/<[^>]*>/g,'')} />
                           {imageCount > 9 && i === 8 && (
-                            <span class="mask"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M11 11V5H13V11H19V13H13V19H11V13H5V11H11Z"></path></svg>{imageCount - 9}</span>
+                            <span class="mask"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M11 11V5H13V11H19V13H11V19H13V13H19V11H11Z"></path></svg>{imageCount - 9}</span>
                           )}
                         </span>
                       ))}
@@ -138,7 +138,7 @@ function extractImages(html: string): string[] {
       </aside>
     </div>
   </div>
-  <div class="cat_archive_next">
+  <div class="cat_archive_next" data-total-pages={totalPages} data-current-page={page}>
     {page < totalPages && <a class="next" href={`/tag/${slug}/?page=${page+1}`}>more</a>}
   </div>
 </BaseLayout>
