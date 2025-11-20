@@ -43,7 +43,7 @@ const bodyJs = jsList.filter((src) => !/instantpage\.js$/i.test(src));
     <meta name="color-scheme" content="light dark" />
 
     <!-- 关键：在任何 CSS 之前立即执行，防止闪烁 -->
-    <script is:inline set:html={`
+    <Fragment set:html={`<script>
       !function(){
         var isDark = /(?:^|;\\s*)night\\s*=\\s*1/.test(document.cookie);
         console.log('[Theme] Cookie:', document.cookie);
@@ -53,7 +53,7 @@ const bodyJs = jsList.filter((src) => !/instantpage\.js$/i.test(src));
           console.log('[Theme] Applied darkmode class');
         }
       }();
-    `}></script>
+    </script>`} />
 
     <style>
       /* 关键：立即应用背景色，使用直接值而非变量，防止被覆盖 */
