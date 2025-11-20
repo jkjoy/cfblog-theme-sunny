@@ -10,20 +10,6 @@ const settings = await fetchSettings();
 // 否则显示 "页面标题 - 网站标题" 格式
 const pageTitle = title === siteName ? siteName : `${title} - ${siteName}`;
 
-// 黑夜模式检测脚本（使用纯字符串避免转义）
-const darkModeScript = String.raw`
-(function(){
-  var c = document.cookie;
-  var isDark = c.indexOf('night=1') > -1;
-  console.log('[Theme] Cookie:', c);
-  console.log('[Theme] Is dark mode:', isDark);
-  if(isDark) {
-    document.documentElement.classList.add('darkmode');
-    console.log('[Theme] Applied darkmode class');
-  }
-})();
-`;
-
 // CSS 列表（按顺序引入）
 const cssList = [
   '/style/fancybox.css',
@@ -57,7 +43,7 @@ const bodyJs = jsList.filter((src) => !/instantpage\.js$/i.test(src));
     <meta name="color-scheme" content="light dark" />
 
     <!-- 关键：在任何 CSS 之前立即执行，防止闪烁 -->
-    <script is:inline set:html={darkModeScript}></script>
+    <script is:inline src="/style/dark-mode-init.js"></script>
 
     <style>
       /* 关键：立即应用背景色，使用直接值而非变量，防止被覆盖 */
@@ -104,7 +90,7 @@ const bodyJs = jsList.filter((src) => !/instantpage\.js$/i.test(src));
       <script type="module" src={src}></script>
     ))}
 
-    <style define:vars={{ settings }} set:text={`
+    <style define:vars={{ settings }}>
       :root {
         --theme: ${settings.theme_color || '#49b1f5'};
         --theme-60: ${settings.theme_color || '#49b1f5'}99;
@@ -135,10 +121,10 @@ const bodyJs = jsList.filter((src) => !/instantpage\.js$/i.test(src));
         --code-bg: ${settings.dark_code_bg || '#2d2d2d'};
         --code-color: ${settings.dark_code_color || '#f8f8f2'};
       }
-    `}></style>
+    </style>
 
     <!-- PJAX 配置：阻止分页链接使用 PJAX -->
-    <script define:vars={{ settings }} set:text={`
+    <script is:inline>
       window.PJAX_CONFIG = {
         timeout: 10000,
         cacheBust: false,
@@ -155,7 +141,7 @@ const bodyJs = jsList.filter((src) => !/instantpage\.js$/i.test(src));
       };
       // 阻止分页链接使用 PJAX（保留普通页面跳转）
       window.PJAX_CONFIG.selectors.push('.cat_pagination a');
-    `}></script>
+    </script>
 
     <!-- 自定义头部代码 -->
     <Fragment set:html={settings.head_code || ''} />
@@ -178,7 +164,7 @@ const bodyJs = jsList.filter((src) => !/instantpage\.js$/i.test(src));
     ))}
 
     <!-- PJAX 初始化：阻止分页链接使用 PJAX -->
-    <script is:inline set:text={`
+    <script is:inline>
       document.addEventListener('DOMContentLoaded', function() {
         if (typeof Pjax !== 'undefined') {
           var pjax = new Pjax(window.PJAX_CONFIG);
@@ -200,7 +186,8 @@ const bodyJs = jsList.filter((src) => !/instantpage\.js$/i.test(src));
 
           // PJAX 完成后立即恢复黑夜模式状态
           document.addEventListener('pjax:success', function() {
-            var isDark = /(?:^|;\\s*)night\\s*=\\s*1/.test(document.cookie);
+            var c = document.cookie;
+            var isDark = c.indexOf('night=1') > -1;
             var de = document.documentElement;
             if (isDark) {
               de.classList.add('darkmode');
@@ -210,7 +197,7 @@ const bodyJs = jsList.filter((src) => !/instantpage\.js$/i.test(src));
           });
         }
       });
-    `}></script>
+    </script>
 
   </body>
 </html>
