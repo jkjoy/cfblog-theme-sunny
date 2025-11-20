@@ -3,7 +3,8 @@
     "allow": [
       "Bash(cat \"/e/OneDrive/桌面/都是github/cfblog-theme-sunny/dist/style/main.js\":*)",
       "Bash(cat:*)",
-      "Bash(powershell:*)"
+      "Bash(powershell:*)",
+      "Bash(npm run build:*)"
     ],
     "deny": [],
     "ask": []

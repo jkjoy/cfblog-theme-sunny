@@ -4,3 +4,6 @@
 tmp_before.css
 tmp_segment.css
 /dist
+/.claude
+/.claude
+.claude/settings.local.json
