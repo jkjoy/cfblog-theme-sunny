@@ -43,20 +43,17 @@ const bodyJs = jsList.filter((src) => !/instantpage\.js$/i.test(src));
     <meta name="color-scheme" content="light dark" />
 
     <!-- 关键：在任何 CSS 之前立即执行，防止闪烁 -->
-    <script is:inline>
+    <script is:inline set:html={`
       !function(){
-        // 检测黑夜模式 cookie
-        var isDark = /(?:^|;\s*)night\s*=\s*1/.test(document.cookie);
-        // 调试输出（可选，测试后可删除）
+        var isDark = /(?:^|;\\s*)night\\s*=\\s*1/.test(document.cookie);
         console.log('[Theme] Cookie:', document.cookie);
         console.log('[Theme] Is dark mode:', isDark);
-        // 立即应用 darkmode 类
         if(isDark) {
           document.documentElement.classList.add("darkmode");
           console.log('[Theme] Applied darkmode class');
         }
       }();
-    </script>
+    `}></script>
 
     <style>
       /* 关键：立即应用背景色，使用直接值而非变量，防止被覆盖 */
