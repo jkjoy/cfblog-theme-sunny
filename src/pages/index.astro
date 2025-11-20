@@ -32,9 +32,9 @@ function extractImages(html: string): string[] {
     if (!seen.has(u)) { seen.add(u); urls.push(u); }
   };
   const exts = '(?:png|jpe?g|gif|webp|svg|bmp|ico|avif|tiff?)';
-  const reAbs = new RegExp(`https?:\\/\\/[^\s"'<>\)]+?\\.${exts}(?:\\?[^\s"'<>\)]*)?(?:#[^\s"'<>\)]*)?`, 'gi');
-  const reProt = new RegExp(`(?:^|[^\\w])(\\/\\/[^\s"'<>\)]+?\\.${exts}(?:\\?[^\s"'<>\)]*)?(?:#[^\s"'<>\)]*)?)`, 'gi');
-  const reRoot = new RegExp(`(?:^|[^\\w])(\\/[^"'<>\s\)]+?\\.${exts}(?:\\?[^\s"'<>\)]*)?(?:#[^\s"'<>\)]*)?)`, 'gi');
+  const reAbs = new RegExp(`https?:\/\/[^\s"'<>\)]+?\.${exts}(?:\?[^\s"'<>\)]*)?(?:#[^\s"'<>\)]*)?`, 'gi');
+  const reProt = new RegExp(`(?:^|[^\w])(\/\/[^\s"'<>\)]+?\.${exts}(?:\?[^\s"'<>\)]*)?(?:#[^\s"'<>\)]*)?)`, 'gi');
+  const reRoot = new RegExp(`(?:^|[^\w])(\/[^"'<>\s\)]+?\.${exts}(?:\?[^\s"'<>\)]*)?(?:#[^\s"'<>\)]*)?)`, 'gi');
   let m: RegExpExecArray | null;
   while ((m = reAbs.exec(html)) && urls.length < 20) push(m[0]);
   while ((m = reProt.exec(html)) && urls.length < 20) push(m[1]);
@@ -43,44 +43,24 @@ function extractImages(html: string): string[] {
   const mdImg = /!\[[^\]]*\]\(([^)\s]+)\)/gi;
   while ((m = mdImg.exec(html)) && urls.length < 20) {
     let u = (m[1] || '').trim();
-    u = u.replace(/^['\"]|['\"]$/g, '');
+    u = u.replace(/^['"]|['"]$/g, '');
     push(u);
   }
   return urls;
 }
-function relativeTime(dateStr: string): string {
-  const d = new Date(dateStr);
-  const now = new Date();
-  const diff = Math.max(0, now.getTime() - d.getTime());
-  const mins = Math.floor(diff / 60000);
-  if (mins < 60) return `${mins}分钟前`;
-  const hours = Math.floor(mins / 60);
-  if (hours < 24) return `${hours}小时前`;
-  const days = Math.floor(hours / 24);
-  if (days < 30) return `${days}天前`;
-  const months = Math.floor(days / 30);
-  if (months < 12) return `${months}个月前`;
-  const years = Math.floor(months / 12);
-  return `${years}年前`;
+function formatDateTime(dateStr: string): string {
+  const date = new Date(dateStr);
+  return date.toLocaleString('zh-CN', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit'
+  });
 }
 function isNew(dateStr: string): boolean {
   const created = new Date(dateStr).getTime();
   return (Date.now() - created) <= 3 * 24 * 60 * 60 * 1000;
-}
-function relativeTime(dateStr: string): string {
-  const d = new Date(dateStr);
-  const now = new Date();
-  const diff = Math.max(0, now.getTime() - d.getTime());
-  const mins = Math.floor(diff / 60000);
-  if (mins < 60) return `${mins}分钟前`;
-  const hours = Math.floor(mins / 60);
-  if (hours < 24) return `${hours}小时前`;
-  const days = Math.floor(hours / 24);
-  if (days < 30) return `${days}天前`;
-  const months = Math.floor(days / 30);
-  if (months < 12) return `${months}个月前`;
-  const years = Math.floor(months / 12);
-  return `${years}年前`;
 }
 ---
 <BaseLayout title={siteInfo.name || 'Sunny'} description={siteInfo.description || 'Astro + WordPress'}>
@@ -100,7 +80,7 @@ function relativeTime(dateStr: string): string {
             const imgs = extractImages(p.content.rendered || '');
             const imageCount = imgs.length;
             const maxImages = Math.min(imageCount, 9);
-            
+
             const tagsTerms = (p._embedded?.['wp:term'] || []).flat?.() || [];
             const tags = tagsTerms.filter((t: any) => t.taxonomy === 'post_tag');
             return (
@@ -129,7 +109,7 @@ function relativeTime(dateStr: string): string {
                   <div class="middle">
                     <div class="top">{adminName}</div>
                     <div class="bottom">
-                      <span cat_title={new Date(p.date).toLocaleDateString('zh-CN')}>{relativeTime(p.date)}</span>
+                      <span>{formatDateTime(p.date)}</span>
                       {isNew(p.date) && <span style="color:#ff000099;"> · NEW!</span>}
                     </div>
                   </div>
@@ -147,7 +127,7 @@ function relativeTime(dateStr: string): string {
                         <span data-fancybox={`gallery${p.id}`} class="postlist_gallery" href={imgs[i]}>
                           <img class="lazyload postlist_img" src="/style/lazy.png" data-src={imgs[i]} alt={p.title.rendered.replace(/<[^>]*>/g,'')} />
                           {imageCount > 9 && i === 8 && (
-                            <span class="mask"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M11 11V5H13V11H19V13H13V19H11V13H5V11H11Z"></path></svg>{imageCount - 9}</span>
+                            <span class="mask"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M11 11V5H13V11H19V13H11V19H13V13H19V11H11Z"></path></svg>{imageCount - 9}</span>
                           )}
                         </span>
                       ))}
