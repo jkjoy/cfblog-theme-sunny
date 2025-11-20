@@ -43,7 +43,7 @@ const bodyJs = jsList.filter((src) => !/instantpage\.js$/i.test(src));
     <meta name="color-scheme" content="light dark" />
 
     <!-- 关键：在任何 CSS 之前立即执行，防止闪烁 -->
-    <script>
+    <script is:inline>
       !function(){
         // 检测黑夜模式 cookie
         var isDark = /(?:^|;\s*)night\s*=\s*1/.test(document.cookie);
