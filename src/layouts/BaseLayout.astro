@@ -41,38 +41,52 @@ const bodyJs = jsList.filter((src) => !/instantpage\.js$/i.test(src));
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="color-scheme" content="light dark" />
+
+    <!-- 关键：在任何 CSS 之前立即执行，防止闪烁 -->
     <script>
-      (function(){
-        try {
-          var d=document, de=d.documentElement;
-          // Apply dark class IMMEDIATELY based on cookie
-          var m=(d.cookie||'').match(/(?:^|;\s*)night\s*=\s*(\d)/);
-          if(m&&m[1]==='1'){ de.classList.add('darkmode'); }
-          // 禁用过渡效果，防止闪烁
-          de.style.setProperty('--initial-transition', 'none');
-        }catch(e){}
-      })();
+      !function(){
+        // 检测黑夜模式 cookie
+        var isDark = /(?:^|;\s*)night\s*=\s*1/.test(document.cookie);
+        // 调试输出（可选，测试后可删除）
+        console.log('[Theme] Cookie:', document.cookie);
+        console.log('[Theme] Is dark mode:', isDark);
+        // 立即应用 darkmode 类
+        if(isDark) {
+          document.documentElement.classList.add("darkmode");
+          console.log('[Theme] Applied darkmode class');
+        }
+      }();
     </script>
+
     <style>
-      /* 关键：在 CSS 加载前设置背景色和文字颜色，防止闪烁 */
-      * {
-        transition: var(--initial-transition, none) !important;
+      /* 关键：立即应用背景色，使用直接值而非变量，防止被覆盖 */
+      html{
+        background:#fff !important;
+        color:#4a4a4a;
       }
-      html {
-        background: #fff;
-        color: #4a4a4a;
+      html.darkmode{
+        background:#1a1a1a !important;
+        color:#e0e0e0;
       }
-      html.darkmode {
-        background: #1a1a1a;
-        color: #e0e0e0;
+      body{
+        margin:0;
+        background:inherit;
+        color:inherit;
       }
-      body {
-        background: #fff;
-        color: #4a4a4a;
+      /* 预设 CSS 变量，会被后续样式覆盖为用户自定义值 */
+      :root{
+        --background:#fff;
+        --background-1:#fff;
+        --background-2:#fff;
+        --background-3:#fff;
+        --color:#4a4a4a;
       }
-      html.darkmode body {
-        background: #1a1a1a;
-        color: #e0e0e0;
+      :root.darkmode{
+        --background:#1a1a1a;
+        --background-1:#1e1e1e;
+        --background-2:#222;
+        --background-3:#252525;
+        --color:#e0e0e0;
       }
     </style>
 
@@ -162,22 +176,13 @@ const bodyJs = jsList.filter((src) => !/instantpage\.js$/i.test(src));
       <script is:inline src={src}></script>
     ))}
 
-    <!-- 恢复过渡效果 -->
-    <script is:inline>
-      window.addEventListener('load', function() {
-        setTimeout(function() {
-          document.documentElement.style.removeProperty('--initial-transition');
-        }, 100);
-      });
-    </script>
-
     <!-- PJAX 初始化：阻止分页链接使用 PJAX -->
     <script is:inline set:text={`
       document.addEventListener('DOMContentLoaded', function() {
         if (typeof Pjax !== 'undefined') {
           var pjax = new Pjax(window.PJAX_CONFIG);
 
-          // PJAX 开始时禁用过渡，防止闪烁
+          // 阻止分页链接使用 PJAX
           document.addEventListener('pjax:send', function(e) {
             var trigger = e.trigger;
             if (trigger && (
@@ -190,25 +195,17 @@ const bodyJs = jsList.filter((src) => !/instantpage\.js$/i.test(src));
               e.preventDefault();
               return false;
             }
-            // 其他 PJAX 请求：禁用过渡
-            document.documentElement.style.setProperty('--initial-transition', 'none');
           });
 
-          // PJAX 完成后恢复黑夜模式状态并恢复过渡
+          // PJAX 完成后立即恢复黑夜模式状态
           document.addEventListener('pjax:success', function() {
+            var isDark = /(?:^|;\\s*)night\\s*=\\s*1/.test(document.cookie);
             var de = document.documentElement;
-            var m = (document.cookie || '').match(/(?:^|;\\s*)night\\s*=\\s*(\\d)/);
-            if (m && m[1] === '1') {
-              if (!de.classList.contains('darkmode')) {
-                de.classList.add('darkmode');
-              }
+            if (isDark) {
+              de.classList.add('darkmode');
             } else {
               de.classList.remove('darkmode');
             }
-            // 恢复过渡效果
-            setTimeout(function() {
-              de.style.removeProperty('--initial-transition');
-            }, 50);
           });
         }
       });
