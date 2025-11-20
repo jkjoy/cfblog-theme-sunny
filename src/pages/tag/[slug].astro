@@ -47,9 +47,9 @@ function extractImages(html: string): string[] {
     if (!seen.has(u)) { seen.add(u); urls.push(u); }
   };
   const exts = '(?:png|jpe?g|gif|webp|svg|bmp|ico|avif|tiff?)';
-  const reAbs = new RegExp(`https?:\/\/[^\s"'<>]+?\.${exts}(?:\?[^\s"'<>]*)?(?:#[^\s"'<>]*)?`, 'gi');
-  const reProt = new RegExp(`(?:^|[^\w])(\/\/[^\s"'<>]+?\.${exts}(?:\?[^\s"'<>]*)?(?:#[^\s"'<>]*)?)`, 'gi');
-  const reRoot = new RegExp(`(?:^|[^\w])(\/[^"'<>\s]+?\.${exts}(?:\?[^\s"'<>]*)?(?:#[^\s"'<>]*)?)`, 'gi');
+  const reAbs = new RegExp(`https?:\\/\\/[^\\s"'<>]+?\\.${exts}(?:\\?[^\\s"'<>]*)?(?:#[^\\s"'<>]*)?`, 'gi');
+  const reProt = new RegExp(`(?:^|[^\\w])(\\/\\/[^\\s"'<>]+?\\.${exts}(?:\\?[^\\s"'<>]*)?(?:#[^\\s"'<>]*)?)`, 'gi');
+  const reRoot = new RegExp(`(?:^|[^\\w])(\\/[^"'<>\\s]+?\\.${exts}(?:\\?[^\\s"'<>]*)?(?:#[^\\s"'<>]*)?)`, 'gi');
   let m: RegExpExecArray | null;
   while ((m = reAbs.exec(html)) && urls.length < 20) push(m[0]);
   while ((m = reProt.exec(html)) && urls.length < 20) push(m[1]);
@@ -138,7 +138,9 @@ function extractImages(html: string): string[] {
       </aside>
     </div>
   </div>
-  <div class="cat_archive_next" data-total-pages={totalPages} data-current-page={page}>
-    {page < totalPages && <a class="next" href={`/tag/${slug}/?page=${page+1}`}>more</a>}
-  </div>
+  {totalPages > 1 && (
+    <div class="cat_archive_next" data-total-pages={totalPages} data-current-page={page}>
+      <!-- 页码将由 JavaScript 渲染 -->
+    </div>
+  )}
 </BaseLayout>

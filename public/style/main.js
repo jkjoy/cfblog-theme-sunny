@@ -96,41 +96,63 @@ $('body').on('click','.cat_archive_next a.next',function(e) {
 
 /* 分页导航功能 - 页码显示 */
 function initPagination() {
-    var currentPage = getCurrentPage();
-    var totalPages = getTotalPages();
+    var paginationContainer = document.querySelector('.cat_archive_next');
+    if (!paginationContainer) return;
+
+    var currentPage = parseInt(paginationContainer.getAttribute('data-current-page')) || 1;
+    var totalPages = parseInt(paginationContainer.getAttribute('data-total-pages')) || 1;
 
     if (totalPages > 1) {
         renderPageNumbers(currentPage, totalPages);
+    } else {
+        // 只有一页时隐藏分页区域
+        paginationContainer.style.display = 'none';
     }
 }
 
-// 获取当前页码
-function getCurrentPage() {
+// 获取页面基础路径
+function getPageBasePath() {
     var pathname = window.location.pathname;
-    var match = pathname.match(/\/page\/(\d+)\//);
-    if (match) {
-        return parseInt(match[1]);
+
+    // 检测分类页面 /category/xxx/ 或 /category/xxx/?page=2
+    if (pathname.indexOf('/category/') === 0) {
+        var match = pathname.match(/\/category\/([^\/]+)/);
+        if (match) {
+            return { type: 'category', slug: match[1] };
+        }
     }
-    return 1;
+
+    // 检测标签页面 /tag/xxx/ 或 /tag/xxx/?page=2
+    if (pathname.indexOf('/tag/') === 0) {
+        var match = pathname.match(/\/tag\/([^\/]+)/);
+        if (match) {
+            return { type: 'tag', slug: match[1] };
+        }
+    }
+
+    // 默认为首页
+    return { type: 'index' };
 }
 
-// 获取总页数（从页面数据中提取）
-function getTotalPages() {
-    // 尝试从页面中提取总页数信息
-    // 可以通过在页面中添加隐藏元素或数据属性来传递
-    var totalPagesElement = document.querySelector('[data-total-pages]');
-    if (totalPagesElement) {
-        return parseInt(totalPagesElement.getAttribute('data-total-pages'));
+// 生成页码 URL
+function generatePageUrl(pageNum, basePath) {
+    if (basePath.type === 'category') {
+        if (pageNum === 1) {
+            return '/category/' + basePath.slug + '/';
+        }
+        return '/category/' + basePath.slug + '/?page=' + pageNum;
+    } else if (basePath.type === 'tag') {
+        if (pageNum === 1) {
+            return '/tag/' + basePath.slug + '/';
+        }
+        return '/tag/' + basePath.slug + '/?page=' + pageNum;
+    } else {
+        // 首页
+        if (pageNum === 1) {
+            return '/';
+        }
+        return '/page/' + pageNum + '/';
     }
-
-    // 如果没有明确的总页数，根据是否存在下一页链接来估算
-    var nextLink = document.querySelector('.cat_archive_next a.next');
-    if (!nextLink) {
-        return getCurrentPage(); // 当前页就是最后一页
-    }
-
-    // 默认返回较大值，实际使用时建议从服务器端传递总页数
-    return 999;
 }
 
 // 渲染页码导航
@@ -138,12 +160,13 @@ function renderPageNumbers(currentPage, totalPages) {
     var paginationContainer = document.querySelector('.cat_archive_next');
     if (!paginationContainer) return;
 
+    var basePath = getPageBasePath();
     var paginationHTML = '<div class="cat_pagination">';
 
     // 上一页
     if (currentPage > 1) {
         var prevPage = currentPage - 1;
-        var prevUrl = prevPage === 1 ? '/' : '/page/' + prevPage + '/';
+        var prevUrl = generatePageUrl(prevPage, basePath);
         paginationHTML += '<a href="' + prevUrl + '" class="page-nav prev">‹ 上一页</a>';
     }
 
@@ -153,7 +176,7 @@ function renderPageNumbers(currentPage, totalPages) {
 
     // 第一页
     if (startPage > 1) {
-        paginationHTML += '<a href="/" class="page-number">1</a>';
+        paginationHTML += '<a href="' + generatePageUrl(1, basePath) + '" class="page-number">1</a>';
         if (startPage > 2) {
             paginationHTML += '<span class="page-dots">...</span>';
         }
@@ -164,7 +187,7 @@ function renderPageNumbers(currentPage, totalPages) {
         if (i === currentPage) {
             paginationHTML += '<span class="page-number current">' + i + '</span>';
         } else {
-            var pageUrl = i === 1 ? '/' : '/page/' + i + '/';
+            var pageUrl = generatePageUrl(i, basePath);
             paginationHTML += '<a href="' + pageUrl + '" class="page-number">' + i + '</a>';
         }
     }
@@ -174,13 +197,13 @@ function renderPageNumbers(currentPage, totalPages) {
         if (endPage < totalPages - 1) {
             paginationHTML += '<span class="page-dots">...</span>';
         }
-        paginationHTML += '<a href="/page/' + totalPages + '/" class="page-number">' + totalPages + '</a>';
+        paginationHTML += '<a href="' + generatePageUrl(totalPages, basePath) + '" class="page-number">' + totalPages + '</a>';
     }
 
     // 下一页
     if (currentPage < totalPages) {
         var nextPage = currentPage + 1;
-        var nextUrl = '/page/' + nextPage + '/';
+        var nextUrl = generatePageUrl(nextPage, basePath);
         paginationHTML += '<a href="' + nextUrl + '" class="page-nav next">下一页 ›</a>';
     }
 
