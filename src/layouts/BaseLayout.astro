@@ -45,16 +45,36 @@ const bodyJs = jsList.filter((src) => !/instantpage\.js$/i.test(src));
       (function(){
         try {
           var d=document, de=d.documentElement;
-          // Disable transitions during first paint to avoid flicker
-          var st=d.createElement('style'); st.id='no-transitions'; st.textContent='*{transition:none!important}'; d.head.appendChild(st);
-          // Apply dark class as early as possible based on SunnyLite cookie night=1
+          // Apply dark class IMMEDIATELY based on cookie
           var m=(d.cookie||'').match(/(?:^|;\s*)night\s*=\s*(\d)/);
           if(m&&m[1]==='1'){ de.classList.add('darkmode'); }
-          // Remove transition blocker after paint
-          window.addEventListener('load',function(){ st.remove(); });
+          // 禁用过渡效果，防止闪烁
+          de.style.setProperty('--initial-transition', 'none');
         }catch(e){}
       })();
     </script>
+    <style>
+      /* 关键：在 CSS 加载前设置背景色和文字颜色，防止闪烁 */
+      * {
+        transition: var(--initial-transition, none) !important;
+      }
+      html {
+        background: #fff;
+        color: #4a4a4a;
+      }
+      html.darkmode {
+        background: #1a1a1a;
+        color: #e0e0e0;
+      }
+      body {
+        background: #fff;
+        color: #4a4a4a;
+      }
+      html.darkmode body {
+        background: #1a1a1a;
+        color: #e0e0e0;
+      }
+    </style>
 
     <title>{pageTitle}</title>
     <meta name="description" content={description} />
@@ -142,13 +162,22 @@ const bodyJs = jsList.filter((src) => !/instantpage\.js$/i.test(src));
       <script is:inline src={src}></script>
     ))}
 
+    <!-- 恢复过渡效果 -->
+    <script is:inline>
+      window.addEventListener('load', function() {
+        setTimeout(function() {
+          document.documentElement.style.removeProperty('--initial-transition');
+        }, 100);
+      });
+    </script>
+
     <!-- PJAX 初始化：阻止分页链接使用 PJAX -->
     <script is:inline set:text={`
       document.addEventListener('DOMContentLoaded', function() {
         if (typeof Pjax !== 'undefined') {
           var pjax = new Pjax(window.PJAX_CONFIG);
 
-          // 阻止分页链接使用 PJAX
+          // PJAX 开始时禁用过渡，防止闪烁
           document.addEventListener('pjax:send', function(e) {
             var trigger = e.trigger;
             if (trigger && (
@@ -161,9 +190,11 @@ const bodyJs = jsList.filter((src) => !/instantpage\.js$/i.test(src));
               e.preventDefault();
               return false;
             }
+            // 其他 PJAX 请求：禁用过渡
+            document.documentElement.style.setProperty('--initial-transition', 'none');
           });
 
-          // PJAX 完成后恢复黑夜模式状态
+          // PJAX 完成后恢复黑夜模式状态并恢复过渡
           document.addEventListener('pjax:success', function() {
             var de = document.documentElement;
             var m = (document.cookie || '').match(/(?:^|;\\s*)night\\s*=\\s*(\\d)/);
@@ -174,6 +205,10 @@ const bodyJs = jsList.filter((src) => !/instantpage\.js$/i.test(src));
             } else {
               de.classList.remove('darkmode');
             }
+            // 恢复过渡效果
+            setTimeout(function() {
+              de.style.removeProperty('--initial-transition');
+            }, 50);
           });
         }
       });
